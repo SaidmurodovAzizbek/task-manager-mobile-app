@@ -1,76 +1,105 @@
 /**
- * EmptyList.js - Task yo'q bo'lganda ko'rsatiladigan komponent
- * 
- * Bu komponent ro'yxat bo'sh bo'lganda foydalanuvchiga 
- * chiroyli xabar ko'rsatadi. Jira uslubida oddiy va zamonaviy.
+ * EmptyList.js - Ro'yxat bo'sh bo'lganda ko'rsatiladigan xabar
+ *
+ * Xabar holatga qarab o'zgaradi: qidiruv natija bermadimi,
+ * "Bajarilgan" filtri bo'shmi yoki umuman task yo'qmi.
  */
 
 import React from 'react';
-import {
-  View,       // Konteyner (quti) yaratish
-  Text,       // Matn ko'rsatish
-  StyleSheet, // Stillar yaratish
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+
+import { colors } from '../theme/colors';
+
+/**
+ * Holatga mos matnni tanlash.
+ *
+ * @param {string} filter - 'all' | 'active' | 'completed'
+ * @param {string} query - Qidiruv so'zi
+ * @returns {Object} - { emoji, title, subtitle }
+ */
+const getMessage = (filter, query) => {
+  // 1) Qidiruv hech narsa topmadi
+  if (query) {
+    return {
+      emoji: '🔍',
+      title: 'Hech narsa topilmadi',
+      subtitle: `"${query}" bo'yicha mos task yo'q.\nBoshqa so'z bilan qidirib ko'ring.`,
+    };
+  }
+
+  // 2) Faol tasklar tugagan - bu yaxshi xabar!
+  if (filter === 'active') {
+    return {
+      emoji: '🎉',
+      title: 'Barcha ishlar bajarilgan',
+      subtitle: 'Faol task qolmadi. Dam olsangiz ham bo\'ladi!',
+    };
+  }
+
+  // 3) Hali bironta task bajarilmagan
+  if (filter === 'completed') {
+    return {
+      emoji: '✅',
+      title: 'Bajarilgan task yo\'q',
+      subtitle: 'Taskni bajarganingizda chap tomondagi\nkatakchani belgilang.',
+    };
+  }
+
+  // 4) Ilova endi ochilgan - umuman task yo'q
+  return {
+    emoji: '📋',
+    title: 'Hozircha tasklar yo\'q',
+    subtitle: 'Yangi task qo\'shish uchun pastdagi\n"+" tugmasini bosing.',
+  };
+};
 
 /**
  * EmptyList komponenti
- * 
- * Hech qanday prop (parametr) olmaydi.
- * Faqat chiroyli xabar ko'rsatadi.
+ *
+ * @param {Object} props
+ * @param {string} props.filter - Hozirgi filtr
+ * @param {string} props.query - Hozirgi qidiruv so'zi
  */
-const EmptyList = () => {
+const EmptyList = ({ filter = 'all', query = '' }) => {
+  const { emoji, title, subtitle } = getMessage(filter, query.trim());
+
   return (
-    // Asosiy konteyner - ekranning markaziga joylashadi
     <View style={styles.container}>
-      {/* Katta emoji - vizual ko'rinish uchun */}
-      <Text style={styles.emoji}>📋</Text>
-
-      {/* Asosiy sarlavha */}
-      <Text style={styles.title}>Hozircha tasklar yo'q</Text>
-
-      {/* Qo'shimcha tushuntirish */}
-      <Text style={styles.subtitle}>
-        Yangi task qo'shish uchun pastdagi {'\n'}
-        "+" tugmasini bosing
-      </Text>
+      <Text style={styles.emoji}>{emoji}</Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
     </View>
   );
 };
 
-// Stillar
 const styles = StyleSheet.create({
-  // Asosiy konteyner - vertikal markazlash
   container: {
-    flex: 1,                     // Barcha bo'sh joyni egallaydi
-    justifyContent: 'center',    // Vertikal markaz
-    alignItems: 'center',        // Gorizontal markaz
-    paddingHorizontal: 40,       // Yon tomondan 40px bo'shliq
-    paddingTop: 80,              // Yuqoridan 80px bo'shliq
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 60,
   },
 
-  // Emoji stili
   emoji: {
-    fontSize: 72,                // Katta emoji
-    marginBottom: 20,            // Pastdan 20px bo'shliq
+    fontSize: 64,
+    marginBottom: 18,
   },
 
-  // Sarlavha stili
   title: {
-    fontSize: 22,                // Katta shrift
-    fontWeight: '700',           // Qalin (bold)
-    color: '#172B4D',            // Jira'ning quyuq ko'k rangi
-    marginBottom: 12,            // Pastdan 12px bo'shliq
-    textAlign: 'center',         // Markazga tekislash
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 10,
+    textAlign: 'center',
   },
 
-  // Qo'shimcha matn stili
   subtitle: {
-    fontSize: 15,                // O'rtacha shrift
-    color: '#6B778C',            // Kulrang rang
-    textAlign: 'center',         // Markazga tekislash
-    lineHeight: 22,              // Qatorlar orasidagi masofa
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 21,
   },
 });
 
-// Komponentni eksport qilish (boshqa fayllardan ishlatish uchun)
 export default EmptyList;

@@ -35,3 +35,17 @@ yarn-error.*
 .vscode/
 *.swp
 *.swo
+
+# Expo prebuild natijasi (kerak bo'lsa qayta yaratiladi)
+/android
+/ios
+.expo-shared/
+
+# EAS
+eas-build-*.log
+
+# Claude Code mahalliy sozlamalari
+.claude/
+
+# Yig'ilgan APK fayllar
+*.apk
