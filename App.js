@@ -18,6 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './screens/HomeScreen';
 import AddTaskScreen from './screens/AddTaskScreen';
 import EditTaskScreen from './screens/EditTaskScreen';
+import CategoriesScreen from './screens/CategoriesScreen';
 import { colors } from './theme/colors';
 
 // Stack navigator - ekranlar "qatlam" bo'lib ustma-ust ochiladi
@@ -65,6 +66,13 @@ export default function App() {
             name="EditTask"
             component={EditTaskScreen}
             options={{ title: 'Tahrirlash', headerBackTitle: 'Orqaga' }}
+          />
+
+          {/* Kategoriyalarni boshqarish */}
+          <Stack.Screen
+            name="Categories"
+            component={CategoriesScreen}
+            options={{ title: 'Kategoriyalar', headerBackTitle: 'Orqaga' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

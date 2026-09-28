@@ -3,7 +3,7 @@
  *
  * Bosh ekranning o'ng yuqori burchagidagi "⋯" tugmasi shu oynani ochadi.
  * Ichida kundalik ishlatilmaydigan, lekin kerak bo'ladigan amallar:
- * zaxira nusxa olish, tiklash va tozalash.
+ * kategoriyalarni boshqarish, zaxira nusxa olish, tiklash va tozalash.
  */
 
 import React from 'react';
@@ -59,6 +59,7 @@ const MenuRow = ({ icon, label, hint, onPress, disabled, danger }) => (
  * @param {Object} props.stats - { total, completed, active, overdue }
  * @param {Function} props.onExport - Zaxira nusxa olish
  * @param {Function} props.onImport - Zaxiradan tiklash
+ * @param {Function} props.onCategories - Kategoriyalar ekranini ochish
  * @param {Function} props.onClearCompleted - Bajarilganlarni o'chirish
  * @param {Function} props.onClearAll - Hammasini o'chirish
  */
@@ -68,6 +69,7 @@ const TaskMenu = ({
   stats,
   onExport,
   onImport,
+  onCategories,
   onClearCompleted,
   onClearAll,
 }) => {
@@ -97,6 +99,15 @@ const TaskMenu = ({
           <Text style={styles.sheetSubtitle}>
             Jami {stats.total} ta · {stats.active} faol · {stats.completed} bajarilgan
           </Text>
+
+          <View style={styles.divider} />
+
+          <MenuRow
+            icon="🏷️"
+            label="Kategoriyalar"
+            hint="Qo'shish, tahrirlash va o'chirish"
+            onPress={onCategories}
+          />
 
           <View style={styles.divider} />
 

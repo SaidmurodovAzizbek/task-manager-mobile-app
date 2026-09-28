@@ -26,14 +26,17 @@ import {
 } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 
+import CategoryPicker from './CategoryPicker';
 import DateField from './DateField';
 import PriorityPicker from './PriorityPicker';
+import { useCategories } from '../hooks/useCategories';
 import { colors } from '../theme/colors';
 import {
   DESCRIPTION_MAX,
   TITLE_MAX,
   validateTaskInput,
 } from '../utils/taskUtils';
+import { DEFAULT_CATEGORY_KEY, getTaskCategoryKey } from '../utils/categoryUtils';
 
 /**
  * TaskForm komponenti
@@ -41,6 +44,7 @@ import {
  * @param {Object} props
  * @param {Object} props.navigation - React Navigation obyekti
  * @param {Object} [props.task] - Tahrirlanayotgan task (yangi taskda yo'q)
+ * @param {string} [props.initialCategory] - Yangi task uchun oldindan tanlangan kategoriya
  * @param {Function} props.onSubmit - Saqlash funksiyasi: async (values) => void
  * @param {string} props.submitLabel - Saqlash tugmasidagi matn
  * @param {string} props.title - Forma sarlavhasi
@@ -50,6 +54,7 @@ import {
 const TaskForm = ({
   navigation,
   task,
+  initialCategory,
   onSubmit,
   submitLabel,
   title: formTitle,
@@ -64,6 +69,11 @@ const TaskForm = ({
   const [description, setDescription] = useState(task?.description || '');
   const [deadline, setDeadline] = useState(task?.deadline || '');
   const [priority, setPriority] = useState(task?.priority || 'medium');
+
+  // Boshlang'ich kategoriya: taskning o'zi yoki bosh ekranda tanlangan filtr
+  const startCategory = task?.category || initialCategory || DEFAULT_CATEGORY_KEY;
+  const [category, setCategory] = useState(startCategory);
+  const [categories, setCategories] = useCategories();
 
   // Saqlash jarayoni ketyaptimi?
   const [saving, setSaving] = useState(false);
@@ -85,7 +95,8 @@ const TaskForm = ({
     title.trim() !== (task?.title || '') ||
     description.trim() !== (task?.description || '') ||
     deadline.trim() !== (task?.deadline || '') ||
-    priority !== (task?.priority || 'medium');
+    priority !== (task?.priority || 'medium') ||
+    category !== startCategory;
 
   /**
    * Ekrandan chiqishni ushlab turish.
@@ -129,6 +140,9 @@ const TaskForm = ({
       description: description.trim(),
       deadline: deadline.trim() || null,
       priority,
+      // Kalit o'zgarishsiz saqlanadi: kategoriya o'chirilgan bo'lsa ham
+      // ro'yxat va filtr uni "Boshqa" deb ko'rsatadi
+      category,
     };
 
     // 1) Tekshiramiz
@@ -237,6 +251,18 @@ const TaskForm = ({
           <Text style={styles.charCount}>
             {description.length}/{DESCRIPTION_MAX}
           </Text>
+        </View>
+
+        {/* === Kategoriya === */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>🏷️ Kategoriya</Text>
+          <CategoryPicker
+            categories={categories}
+            // O'chirilgan kategoriyadagi task "Boshqa" da ko'rinadi
+            value={getTaskCategoryKey({ category }, categories)}
+            onChange={setCategory}
+            onCategoriesChange={setCategories}
+          />
         </View>
 
         {/* === Muddat (ixtiyoriy) === */}

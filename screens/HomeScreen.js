@@ -4,6 +4,7 @@
  * Bu ekranda:
  * - barcha tasklar ro'yxati;
  * - qidiruv, filtr (Barchasi / Faol / Bajarilgan) va saralash;
+ * - kategoriya bo'yicha filtr (Ish, Sport, ...);
  * - taskni bajarildi deb belgilash, tahrirlash, o'chirish;
  * - o'chirilgan taskni qaytarish ("Qaytarish" tugmasi);
  * - zaxira nusxa va tozalash amallari (o'ng yuqoridagi "⋯" menyu).
@@ -30,6 +31,8 @@ import TaskItem from '../components/TaskItem';
 import EmptyList from '../components/EmptyList';
 import TaskMenu from '../components/TaskMenu';
 import ImportDialog from '../components/ImportDialog';
+import CategoryFilterBar from '../components/CategoryFilterBar';
+import { useCategories } from '../hooks/useCategories';
 import { colors } from '../theme/colors';
 import {
   clearAllTasks,
@@ -50,6 +53,7 @@ import {
   sortTasks,
   TASK_FILTERS,
 } from '../utils/taskUtils';
+import { countByCategory, findCategory } from '../utils/categoryUtils';
 
 // O'chirilgan taskni qaytarish uchun beriladigan vaqt (millisekund)
 const UNDO_TIMEOUT = 6000;
@@ -82,6 +86,10 @@ const HomeScreen = ({ navigation }) => {
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState('created');
+  const [category, setCategory] = useState('all');
+
+  // Kategoriyalar ro'yxati (ekran fokusga kelganda yangilanadi)
+  const [categories] = useCategories();
 
   // === Oynalar ===
   const [menuVisible, setMenuVisible] = useState(false);
@@ -141,6 +149,7 @@ const HomeScreen = ({ navigation }) => {
       if (!active) return;
       if (settings.sortKey) setSortKey(settings.sortKey);
       if (settings.filter) setFilter(settings.filter);
+      if (settings.category) setCategory(settings.category);
     });
 
     return () => {
@@ -155,10 +164,37 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => () => clearTimeout(undoTimer.current), []);
 
   // === Ro'yxatni tayyorlash ===
+
+  // Eslab qolingan kategoriya o'chirib yuborilgan bo'lishi mumkin -
+  // unda filtrsiz ko'rsatamiz
+  const activeCategory =
+    category !== 'all' && categories.some((c) => c.key === category) ? category : 'all';
+
   // useMemo - tasklar yoki filtr o'zgarmasa, qayta hisoblamaymiz
   const visibleTasks = useMemo(
-    () => sortTasks(filterTasks(tasks, { filter, query }), sortKey),
-    [tasks, filter, query, sortKey]
+    () =>
+      sortTasks(
+        filterTasks(tasks, { filter, query, category: activeCategory, categories }),
+        sortKey
+      ),
+    [tasks, filter, query, activeCategory, categories, sortKey]
+  );
+
+  /**
+   * Kategoriya tugmachalaridagi sonlar.
+   * Holat filtri (Faol / Bajarilgan) hisobga olinadi: "Faol" tanlangan
+   * bo'lsa, har bir kategoriyadagi FAOL tasklar soni ko'rinadi.
+   */
+  const statusTasks = useMemo(() => filterTasks(tasks, { filter }), [tasks, filter]);
+  const categoryCounts = useMemo(
+    () => countByCategory(statusTasks, categories),
+    [statusTasks, categories]
+  );
+
+  // Kalit -> kategoriya. Kartochkaga bir xil obyekt borsa, memo ishlaydi.
+  const categoryMap = useMemo(
+    () => new Map(categories.map((c) => [c.key, c])),
+    [categories]
   );
 
   const stats = useMemo(() => getStats(tasks), [tasks]);
@@ -259,12 +295,14 @@ const HomeScreen = ({ navigation }) => {
     ({ item }) => (
       <TaskItem
         task={item}
+        // Noma'lum kategoriya - "Boshqa"
+        category={categoryMap.get(item.category) || findCategory(categories, item.category)}
         onToggle={handleToggle}
         onDelete={handleDelete}
         onPress={handleTaskPress}
       />
     ),
-    [handleToggle, handleDelete, handleTaskPress]
+    [categoryMap, categories, handleToggle, handleDelete, handleTaskPress]
   );
 
   /**
@@ -282,6 +320,19 @@ const HomeScreen = ({ navigation }) => {
     setFilter(key);
     saveSettings({ filter: key });
   };
+
+  /**
+   * Kategoriya filtrini o'zgartirish va eslab qolish.
+   */
+  const handleCategoryChange = (key) => {
+    setCategory(key);
+    saveSettings({ category: key });
+  };
+
+  /**
+   * Kategoriyalarni boshqarish ekrani.
+   */
+  const openCategories = () => navigation.navigate('Categories');
 
   /**
    * Menyuni yopib, so'ng amalni bajarish.
@@ -484,6 +535,20 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {/* ===== Kategoriya filtri =====
+          Oddiy View ichida: aks holda gorizontal ScrollView bo'sh joyni
+          ro'yxat bilan bo'lishib, ekranning yarmini egallab oladi */}
+      <View>
+        <CategoryFilterBar
+          categories={categories}
+          value={activeCategory}
+          counts={categoryCounts}
+          total={statusTasks.length}
+          onChange={handleCategoryChange}
+          onManage={openCategories}
+        />
+      </View>
+
       {/* ===== Saralash qatori ===== */}
       <View style={styles.sortRow}>
         <Text style={styles.sortLabel}>Saralash:</Text>
@@ -525,7 +590,13 @@ const HomeScreen = ({ navigation }) => {
         data={visibleTasks}
         keyExtractor={(item) => item.id}
         renderItem={renderTask}
-        ListEmptyComponent={<EmptyList filter={filter} query={query} />}
+        ListEmptyComponent={
+          <EmptyList
+            filter={filter}
+            query={query}
+            category={activeCategory !== 'all' ? categoryMap.get(activeCategory) : null}
+          />
+        }
         contentContainerStyle={[
           styles.listContent,
           // FAB va pastki chiziq uchun joy
@@ -567,7 +638,13 @@ const HomeScreen = ({ navigation }) => {
       {/* ===== Yangi task qo'shish tugmasi ===== */}
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 24 }]}
-        onPress={() => navigation.navigate('AddTask')}
+        // Kategoriya filtri tanlangan bo'lsa, yangi task o'sha kategoriyada ochiladi
+        onPress={() =>
+          navigation.navigate(
+            'AddTask',
+            activeCategory !== 'all' ? { category: activeCategory } : undefined
+          )
+        }
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Yangi task qo'shish"
@@ -582,6 +659,7 @@ const HomeScreen = ({ navigation }) => {
         stats={stats}
         onExport={handleExport}
         onImport={handleOpenImport}
+        onCategories={() => runAfterMenuClose(openCategories)}
         onClearCompleted={handleClearCompleted}
         onClearAll={handleClearAll}
       />

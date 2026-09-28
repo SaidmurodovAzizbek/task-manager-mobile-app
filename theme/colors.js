@@ -82,4 +82,36 @@ export const PRIORITIES = [
 export const getPriority = (key) =>
   PRIORITIES.find((p) => p.key === key) || PRIORITIES[1];
 
+/**
+ * Kategoriya ranglari.
+ *
+ * Kategoriyada faqat rang KALITI saqlanadi ("blue", "green" ...),
+ * haqiqiy ranglar shu yerda. Kalitlar ro'yxati utils/categoryUtils.js
+ * dagi CATEGORY_COLOR_KEYS bilan bir xil bo'lishi kerak.
+ *
+ * `color` - matn va chegara, `bgColor` - och fon.
+ */
+export const CATEGORY_COLORS = {
+  blue: { color: '#0052CC', bgColor: '#DEEBFF' },
+  purple: { color: '#5243AA', bgColor: '#EAE6FF' },
+  teal: { color: '#00818F', bgColor: '#E6FCFF' },
+  green: { color: '#006644', bgColor: '#E3FCEF' },
+  orange: { color: '#B65C02', bgColor: '#FFF0B3' },
+  red: { color: '#BF2600', bgColor: '#FFEBE6' },
+  pink: { color: '#A3246E', bgColor: '#FDE6F3' },
+  gray: { color: '#505F79', bgColor: '#EBECF0' },
+};
+
+/**
+ * Kategoriya uchun ranglarni olish.
+ * Noma'lum rang kaliti kelsa - kulrang.
+ *
+ * @param {Object|string} category - Kategoriya obyekti yoki rang kaliti
+ * @returns {Object} - { color, bgColor }
+ */
+export const getCategoryColors = (category) => {
+  const key = typeof category === 'string' ? category : category?.color;
+  return CATEGORY_COLORS[key] || CATEGORY_COLORS.gray;
+};
+
 export default colors;

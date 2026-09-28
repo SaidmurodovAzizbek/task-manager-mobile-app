@@ -4,7 +4,7 @@
  * Kartochkada:
  * - Checkbox (bajarilgan / bajarilmagan)
  * - Sarlavha va tavsif
- * - Ustuvorlik nishoni va muddat
+ * - Ustuvorlik, kategoriya nishonlari va muddat
  * - O'chirish tugmasi
  *
  * Kartochkaning o'zini bossangiz - tahrirlash ekrani ochiladi.
@@ -13,7 +13,7 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
-import { colors, getPriority } from '../theme/colors';
+import { colors, getCategoryColors, getPriority } from '../theme/colors';
 import { formatDate, formatDeadline, isOverdue } from '../utils/taskUtils';
 
 /**
@@ -21,13 +21,15 @@ import { formatDate, formatDeadline, isOverdue } from '../utils/taskUtils';
  *
  * @param {Object} props
  * @param {Object} props.task - Task obyekti
+ * @param {Object} props.category - Taskning kategoriyasi ({ label, icon, color })
  * @param {Function} props.onToggle - Checkbox bosilganda (taskId)
  * @param {Function} props.onDelete - O'chirish bosilganda (task)
  * @param {Function} props.onPress - Kartochka bosilganda (task)
  */
-const TaskItem = ({ task, onToggle, onDelete, onPress }) => {
+const TaskItem = ({ task, category, onToggle, onDelete, onPress }) => {
   // Ustuvorlik ranglari (noma'lum qiymatda "o'rta" qaytadi)
   const priority = getPriority(task.priority);
+  const categoryColors = getCategoryColors(category);
 
   // Muddat o'tib ketganmi? Bajarilgan taskda buni ko'rsatmaymiz.
   const overdue = !task.completed && isOverdue(task.deadline);
@@ -45,16 +47,32 @@ const TaskItem = ({ task, onToggle, onDelete, onPress }) => {
       activeOpacity={0.7}
       // Ekran o'quvchi (TalkBack/VoiceOver) uchun izoh
       accessibilityRole="button"
-      accessibilityLabel={`${task.title}. ${priority.label} ustuvorlik.`}
+      accessibilityLabel={`${task.title}. ${priority.label} ustuvorlik. Kategoriya: ${category?.label}.`}
       accessibilityHint="Tahrirlash uchun bosing"
     >
-      {/* Yuqori qator: ustuvorlik nishoni + muddat */}
+      {/* Yuqori qator: ustuvorlik + kategoriya nishonlari, o'ngda muddat */}
       <View style={styles.cardHeader}>
-        <View style={[styles.priorityBadge, { backgroundColor: priority.bgColor }]}>
-          <Text style={styles.priorityIcon}>{priority.icon}</Text>
-          <Text style={[styles.priorityText, { color: priority.color }]}>
-            {priority.label}
-          </Text>
+        <View style={styles.badgeGroup}>
+          <View style={[styles.priorityBadge, { backgroundColor: priority.bgColor }]}>
+            <Text style={styles.priorityIcon}>{priority.icon}</Text>
+            <Text style={[styles.priorityText, { color: priority.color }]}>
+              {priority.label}
+            </Text>
+          </View>
+
+          {category ? (
+            <View
+              style={[styles.categoryBadge, { backgroundColor: categoryColors.bgColor }]}
+            >
+              <Text style={styles.categoryIcon}>{category.icon}</Text>
+              <Text
+                style={[styles.categoryText, { color: categoryColors.color }]}
+                numberOfLines={1}
+              >
+                {category.label}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Muddat faqat belgilangan bo'lsa ko'rinadi */}
@@ -162,6 +180,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
+  badgeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // Uzun kategoriya nomi muddatni siqib chiqarmasin
+    flexShrink: 1,
+    gap: 6,
+  },
+
   priorityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,6 +206,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexShrink: 1,
+  },
+
+  categoryIcon: {
+    fontSize: 10,
+    marginRight: 4,
+  },
+
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 1,
   },
 
   deadlineBadge: {

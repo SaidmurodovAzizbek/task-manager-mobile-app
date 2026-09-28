@@ -14,11 +14,15 @@ import { addTask } from '../storage/taskStorage';
  * AddTaskScreen komponenti
  *
  * @param {Object} props
+ * @param {Object} props.route - Route parametrlari ({ category } - ixtiyoriy)
  * @param {Object} props.navigation - React Navigation obyekti
  */
-const AddTaskScreen = ({ navigation }) => (
+const AddTaskScreen = ({ route, navigation }) => (
   <TaskForm
     navigation={navigation}
+    // Bosh ekranda kategoriya filtri tanlangan bo'lsa - yangi task o'sha
+    // kategoriyada ochiladi (masalan "Sport" ko'rib turib "+" bosilsa)
+    initialCategory={route.params?.category}
     title="Yangi Task"
     subtitle="Sarlavha majburiy, qolgani ixtiyoriy"
     submitLabel="✅ Saqlash"

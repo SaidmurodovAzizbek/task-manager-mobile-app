@@ -7,7 +7,10 @@
  *     npm test
  *
  * Qoida: ekranlarda hisob-kitob yozmaymiz - hammasi shu faylga tushadi.
+ * (Kategoriyalar mantig'i alohida - categoryUtils.js da.)
  */
+
+import { DEFAULT_CATEGORY_KEY, getTaskCategoryKey } from './categoryUtils.js';
 
 // ---------------------------------------------------------------------------
 // Doimiylar
@@ -253,7 +256,7 @@ export const generateId = () =>
 /**
  * Formadan kelgan ma'lumotdan to'liq task obyekti yasash.
  *
- * @param {Object} input - { title, description, deadline, priority }
+ * @param {Object} input - { title, description, deadline, priority, category }
  * @returns {Object} - Saqlashga tayyor task
  */
 export const createTask = (input = {}) => {
@@ -265,6 +268,10 @@ export const createTask = (input = {}) => {
     description: String(input.description ?? '').trim(),
     deadline: input.deadline ? String(input.deadline).trim() : null,
     priority: PRIORITY_WEIGHT[input.priority] ? input.priority : 'medium',
+    category:
+      typeof input.category === 'string' && input.category.trim()
+        ? input.category.trim()
+        : DEFAULT_CATEGORY_KEY,
     completed: false,
     createdAt: now,
     updatedAt: now,
@@ -275,7 +282,7 @@ export const createTask = (input = {}) => {
  * Xotiradan o'qilgan taskni "tozalash".
  *
  * Eski versiyada saqlangan tasklarda ba'zi maydonlar yo'q bo'lishi mumkin
- * (masalan updatedAt). Bu funksiya ularni to'ldiradi va buzuq yozuvlarni
+ * (masalan updatedAt yoki category). Bu funksiya ularni to'ldiradi va buzuq yozuvlarni
  * rad etadi - shunda ilova eski ma'lumot ustida ham qulab tushmaydi.
  *
  * @param {Object} raw - Xotiradagi yozuv
@@ -299,6 +306,11 @@ export const normalizeTask = (raw) => {
     // Faqat haqiqiy sanani qabul qilamiz, aks holda - muddatsiz
     deadline: isValidDateString(raw.deadline) ? raw.deadline.trim() : null,
     priority: PRIORITY_WEIGHT[raw.priority] ? raw.priority : 'medium',
+    // Kategoriyasiz (eski) tasklar "Boshqa" ga tushadi
+    category:
+      typeof raw.category === 'string' && raw.category.trim()
+        ? raw.category.trim()
+        : DEFAULT_CATEGORY_KEY,
     completed: raw.completed === true,
     createdAt,
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : createdAt,
@@ -365,13 +377,21 @@ export const validateTaskInput = ({ title = '', deadline = '' } = {}) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Tasklarni filtr va qidiruv so'zi bo'yicha ajratish.
+ * Tasklarni filtr, kategoriya va qidiruv so'zi bo'yicha ajratish.
  *
  * @param {Array} tasks - Barcha tasklar
- * @param {Object} options - { filter: 'all'|'active'|'completed', query: string }
+ * @param {Object} options
+ * @param {string} [options.filter] - 'all' | 'active' | 'completed'
+ * @param {string} [options.query] - Qidiruv so'zi
+ * @param {string} [options.category] - 'all' yoki kategoriya kaliti
+ * @param {Array} [options.categories] - To'liq kategoriyalar ro'yxati.
+ *   Berilsa, noma'lum kategoriyadagi tasklar "Boshqa" deb hisoblanadi.
  * @returns {Array} - Mos keladigan tasklar
  */
-export const filterTasks = (tasks, { filter = 'all', query = '' } = {}) => {
+export const filterTasks = (
+  tasks,
+  { filter = 'all', query = '', category = 'all', categories } = {}
+) => {
   const search = String(query).trim().toLowerCase();
 
   return (Array.isArray(tasks) ? tasks : []).filter((task) => {
@@ -379,7 +399,12 @@ export const filterTasks = (tasks, { filter = 'all', query = '' } = {}) => {
     if (filter === 'active' && task.completed) return false;
     if (filter === 'completed' && !task.completed) return false;
 
-    // 2-bosqich: qidiruv (sarlavha yoki tavsif ichidan)
+    // 2-bosqich: kategoriya bo'yicha
+    if (category !== 'all' && getTaskCategoryKey(task, categories) !== category) {
+      return false;
+    }
+
+    // 3-bosqich: qidiruv (sarlavha yoki tavsif ichidan)
     if (!search) return true;
 
     const haystack = `${task.title} ${task.description || ''}`.toLowerCase();

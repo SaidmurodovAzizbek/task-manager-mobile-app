@@ -12,12 +12,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { createTask, normalizeTasks } from '../utils/taskUtils';
+import {
+  buildCategoryList,
+  createCategory,
+  DEFAULT_CATEGORY_KEY,
+  isDefaultCategory,
+  mergeCategories,
+  normalizeCategories,
+  normalizeCategory,
+} from '../utils/categoryUtils';
 
 // Tasklar saqlanadigan kalit
 const STORAGE_KEY = '@task_manager_tasks';
 
 // Sozlamalar (tanlangan saralash tartibi va h.k.) saqlanadigan kalit
 const SETTINGS_KEY = '@task_manager_settings';
+
+// Foydalanuvchi qo'shgan kategoriyalar saqlanadigan kalit.
+// Standart kategoriyalar bu yerda saqlanmaydi - ular koddan keladi.
+const CATEGORIES_KEY = '@task_manager_categories';
 
 /**
  * Tasklar massivini xotiraga yozish (ichki yordamchi funksiya).
@@ -54,7 +67,7 @@ export const getAllTasks = async () => {
 /**
  * Yangi task qo'shish (CREATE).
  *
- * @param {Object} input - { title, description, deadline, priority }
+ * @param {Object} input - { title, description, deadline, priority, category }
  * @returns {Promise<Array>} - Yangilangan to'liq ro'yxat
  */
 export const addTask = async (input) => {
@@ -169,12 +182,15 @@ export const clearAllTasks = async () => {
  */
 export const exportTasks = async () => {
   const tasks = await getAllTasks();
+  const categories = await getCustomCategories();
 
   return JSON.stringify(
     {
       app: 'task-manager-mobile-app',
-      version: 1,
+      // 2-versiya: foydalanuvchi kategoriyalari ham qo'shildi
+      version: 2,
       exportedAt: new Date().toISOString(),
+      categories,
       tasks,
     },
     null,
@@ -187,6 +203,8 @@ export const exportTasks = async () => {
  *
  * Mavjud tasklar o'chirilmaydi - yangilari ustiga qo'shiladi.
  * Bir xil ID li tasklar takrorlanmaydi (normalizeTasks buni hal qiladi).
+ * Zaxiradagi kategoriyalar ham tiklanadi; bir xil nomlisi bo'lsa -
+ * yangisi yaratilmaydi, tasklar mavjudiga o'tkaziladi.
  *
  * @param {string} json - exportTasks qaytargan matn
  * @returns {Promise<Array>} - Yangilangan ro'yxat
@@ -195,10 +213,24 @@ export const importTasks = async (json) => {
   const parsed = JSON.parse(json);
 
   // Ham to'liq zaxira obyektini, ham oddiy massivni qabul qilamiz
-  const incoming = normalizeTasks(Array.isArray(parsed) ? parsed : parsed?.tasks);
+  let incoming = normalizeTasks(Array.isArray(parsed) ? parsed : parsed?.tasks);
 
   if (incoming.length === 0) {
     throw new Error('Zaxira nusxada task topilmadi');
+  }
+
+  // Avval kategoriyalar - tasklar ularga ishora qiladi
+  if (!Array.isArray(parsed) && Array.isArray(parsed?.categories)) {
+    const { categories, remap } = mergeCategories(
+      await getCustomCategories(),
+      parsed.categories
+    );
+
+    await persistCategories(categories);
+
+    incoming = incoming.map((task) =>
+      remap[task.category] ? { ...task, category: remap[task.category] } : task
+    );
   }
 
   const current = await getAllTasks();
@@ -242,4 +274,113 @@ export const saveSettings = async (changes) => {
   } catch (error) {
     console.error('Sozlamalarni saqlashda xatolik:', error);
   }
+};
+
+// ---------------------------------------------------------------------------
+// Kategoriyalar
+// ---------------------------------------------------------------------------
+
+/**
+ * Foydalanuvchi kategoriyalarini xotiraga yozish (ichki yordamchi).
+ *
+ * @param {Array} categories - Faqat foydalanuvchi kategoriyalari
+ * @returns {Array} - Standartlar bilan birga to'liq ro'yxat
+ */
+const persistCategories = async (categories) => {
+  await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  return buildCategoryList(categories);
+};
+
+/**
+ * Faqat foydalanuvchi qo'shgan kategoriyalar.
+ *
+ * @returns {Promise<Array>}
+ */
+export const getCustomCategories = async () => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(CATEGORIES_KEY);
+    return jsonValue != null ? normalizeCategories(JSON.parse(jsonValue)) : [];
+  } catch (error) {
+    console.error('Kategoriyalarni olishda xatolik:', error);
+    return [];
+  }
+};
+
+/**
+ * Barcha kategoriyalar: standartlar + foydalanuvchinikilar.
+ *
+ * Xotira o'qilmasa ham standartlar doim qaytadi.
+ *
+ * @returns {Promise<Array>}
+ */
+export const getCategories = async () => buildCategoryList(await getCustomCategories());
+
+/**
+ * Yangi kategoriya qo'shish.
+ *
+ * Qo'shilgan kategoriya saqlanadi va shundan keyin standartlar qatorida
+ * doim chiqadi - har safar qaytadan yaratish shart emas.
+ *
+ * @param {Object} input - { label, icon, color }
+ * @returns {Promise<Object>} - { category: yangi kategoriya, categories: to'liq ro'yxat }
+ */
+export const addCategory = async (input) => {
+  const current = await getCustomCategories();
+  const category = createCategory(input);
+
+  const categories = await persistCategories([...current, category]);
+  return { category, categories };
+};
+
+/**
+ * Foydalanuvchi kategoriyasini tahrirlash (nom, belgi, rang).
+ * Standart kategoriyalarni o'zgartirib bo'lmaydi.
+ *
+ * @param {string} key - Kategoriya kaliti
+ * @param {Object} changes - { label, icon, color }
+ * @returns {Promise<Array>} - To'liq ro'yxat
+ */
+export const updateCategory = async (key, changes) => {
+  if (isDefaultCategory(key)) {
+    throw new Error("Standart kategoriyani o'zgartirib bo'lmaydi");
+  }
+
+  const current = await getCustomCategories();
+
+  return persistCategories(
+    current.map((category) =>
+      category.key === key
+        ? // Kalit o'zgarmaydi - tasklar unga bog'langan
+          normalizeCategory({ ...category, ...changes, key }) || category
+        : category
+    )
+  );
+};
+
+/**
+ * Foydalanuvchi kategoriyasini o'chirish.
+ *
+ * Tasklar o'chmaydi - ular "Boshqa" kategoriyasiga o'tkaziladi.
+ *
+ * @param {string} key - Kategoriya kaliti
+ * @returns {Promise<Object>} - { categories, tasks } - ikkalasi ham yangilangan
+ */
+export const deleteCategory = async (key) => {
+  if (isDefaultCategory(key)) {
+    throw new Error("Standart kategoriyani o'chirib bo'lmaydi");
+  }
+
+  // Avval tasklarni ko'chiramiz: shunda o'rtada xatolik bo'lsa ham,
+  // hech bir task mavjud bo'lmagan kategoriyada qolib ketmaydi
+  const tasks = await getAllTasks();
+  const movedTasks = await persist(
+    tasks.map((task) =>
+      task.category === key ? { ...task, category: DEFAULT_CATEGORY_KEY } : task
+    )
+  );
+
+  const current = await getCustomCategories();
+  const categories = await persistCategories(current.filter((c) => c.key !== key));
+
+  return { categories, tasks: movedTasks };
 };

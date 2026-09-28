@@ -15,6 +15,8 @@ ro'yxatdan o'tish kerak emas. Ilova samolyot rejimida ham to'liq ishlaydi.
 | ✅ | Task qo'shish, tahrirlash, o'chirish, bajarildi deb belgilash |
 | 🔍 | Sarlavha va tavsif bo'yicha qidirish |
 | 🎯 | Uch darajali ustuvorlik: Yuqori / O'rta / Past |
+| 🏷️ | Kategoriyalar: Ish, Oilaviy, Shaxsiy, Sport, Ta'lim, Boshqa + o'zingiz qo'shganlari |
+| 🗂️ | Bosh ekranda kategoriya bo'yicha filtr (har birida tasklar soni) |
 | 📅 | Muddat qo'yish + "Bugun / Ertaga / Bir hafta" tez tugmalari |
 | ⚠️ | Muddati o'tgan tasklar qizil rangda ajralib turadi |
 | ↕️ | Saralash: yangi, muddat, muhimlik yoki alifbo bo'yicha |
@@ -158,12 +160,16 @@ screens/
   HomeScreen.js           Tasklar ro'yxati, qidiruv, filtr, saralash
   AddTaskScreen.js        Yangi task qo'shish
   EditTaskScreen.js       Taskni tahrirlash
+  CategoriesScreen.js     Kategoriyalarni qo'shish, tahrirlash, o'chirish
 
 components/
   TaskForm.js             Qo'shish va tahrirlash uchun umumiy forma
   TaskItem.js             Bitta task kartochkasi
   DateField.js            Muddat kiritish maydoni
   PriorityPicker.js       Ustuvorlik tanlash
+  CategoryPicker.js       Formada kategoriya tanlash (+ yangisini qo'shish)
+  CategoryDialog.js       Kategoriya qo'shish / tahrirlash oynasi
+  CategoryFilterBar.js    Bosh ekrandagi kategoriya filtri
   TaskMenu.js             Pastdan chiqadigan menyu
   ImportDialog.js         Zaxiradan tiklash oynasi
   EmptyList.js            Ro'yxat bo'sh bo'lgandagi xabar
@@ -171,14 +177,19 @@ components/
 storage/
   taskStorage.js          Telefon xotirasi bilan ishlash (AsyncStorage)
 
+hooks/
+  useCategories.js        Kategoriyalar ro'yxatini ekranga olib kelish
+
 utils/
   taskUtils.js            Sana, saralash, filtr va validatsiya mantiqi
+  categoryUtils.js        Kategoriyalar mantiqi (standartlar, validatsiya)
 
 theme/
-  colors.js               Ranglar va ustuvorlik darajalari
+  colors.js               Ranglar, ustuvorlik darajalari, kategoriya ranglari
 
 tests/
   taskUtils.test.js       Mantiq testlari
+  categoryUtils.test.js   Kategoriyalar testlari
 
 scripts/
   generate-icons.js       Ikonkalarni chizish
@@ -199,13 +210,20 @@ saqlashni `storage` ga, ko'rinishni komponentga.
 
 ## Ma'lumot qayerda saqlanadi?
 
-Tasklar `AsyncStorage` da, `@task_manager_tasks` kaliti ostida turadi.
-Bu telefonning ichki xotirasi.
+Tasklar `AsyncStorage` da, `@task_manager_tasks` kaliti ostida turadi,
+o'zingiz qo'shgan kategoriyalar esa `@task_manager_categories` da.
+Bu telefonning ichki xotirasi. Standart kategoriyalar saqlanmaydi - ular
+koddan keladi, shuning uchun ularni o'chirib bo'lmaydi.
+
+Kategoriya o'chirilsa, undagi tasklar yo'qolmaydi - "Boshqa" ga o'tadi.
+Kategoriyalar paydo bo'lishidan oldingi eski tasklar ham "Boshqa" da turadi.
 
 **Muhim:** ilovani telefondan o'chirsangiz, tasklar ham o'chadi. Shuning
 uchun vaqti-vaqti bilan **⋯ → Zaxira nusxa olish** orqali nusxa olib,
 uni o'zingizga (masalan Telegram'dagi "Saqlangan xabarlar"ga) yuboring.
 Yangi telefonda **⋯ → Zaxiradan tiklash** orqali qaytarasiz.
+Zaxira nusxaga o'zingiz qo'shgan kategoriyalar ham kiradi; yangi
+telefonda xuddi shu nomli kategoriya bo'lsa, ikkinchisi yaratilmaydi.
 
 ---
 
@@ -213,5 +231,4 @@ Yangi telefonda **⋯ → Zaxiradan tiklash** orqali qaytarasiz.
 
 - Eslatmalar (bildirishnoma) — `expo-notifications`
 - Qorong'i rejim (dark mode)
-- Tasklarni kategoriyalarga (teglar) ajratish
 - Takrorlanuvchi tasklar (har kuni / har hafta)

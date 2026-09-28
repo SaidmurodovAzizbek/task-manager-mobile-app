@@ -2,7 +2,8 @@
  * EmptyList.js - Ro'yxat bo'sh bo'lganda ko'rsatiladigan xabar
  *
  * Xabar holatga qarab o'zgaradi: qidiruv natija bermadimi,
- * "Bajarilgan" filtri bo'shmi yoki umuman task yo'qmi.
+ * tanlangan kategoriya bo'shmi, "Bajarilgan" filtri bo'shmi
+ * yoki umuman task yo'qmi.
  */
 
 import React from 'react';
@@ -15,9 +16,10 @@ import { colors } from '../theme/colors';
  *
  * @param {string} filter - 'all' | 'active' | 'completed'
  * @param {string} query - Qidiruv so'zi
+ * @param {Object} [category] - Tanlangan kategoriya (filtr bo'lmasa - null)
  * @returns {Object} - { emoji, title, subtitle }
  */
-const getMessage = (filter, query) => {
+const getMessage = (filter, query, category) => {
   // 1) Qidiruv hech narsa topmadi
   if (query) {
     return {
@@ -27,7 +29,20 @@ const getMessage = (filter, query) => {
     };
   }
 
-  // 2) Faol tasklar tugagan - bu yaxshi xabar!
+  // 2) Tanlangan kategoriyada mos task yo'q
+  if (category) {
+    const status =
+      filter === 'active' ? 'faol ' : filter === 'completed' ? 'bajarilgan ' : '';
+
+    return {
+      emoji: category.icon,
+      title: `"${category.label}" bo'sh`,
+      subtitle: `Bu kategoriyada ${status}task yo'q.
+"+" tugmasini bossangiz, yangi task shu kategoriyada ochiladi.`,
+    };
+  }
+
+  // 3) Faol tasklar tugagan - bu yaxshi xabar!
   if (filter === 'active') {
     return {
       emoji: '🎉',
@@ -36,7 +51,7 @@ const getMessage = (filter, query) => {
     };
   }
 
-  // 3) Hali bironta task bajarilmagan
+  // 4) Hali bironta task bajarilmagan
   if (filter === 'completed') {
     return {
       emoji: '✅',
@@ -45,7 +60,7 @@ const getMessage = (filter, query) => {
     };
   }
 
-  // 4) Ilova endi ochilgan - umuman task yo'q
+  // 5) Ilova endi ochilgan - umuman task yo'q
   return {
     emoji: '📋',
     title: 'Hozircha tasklar yo\'q',
@@ -59,9 +74,10 @@ const getMessage = (filter, query) => {
  * @param {Object} props
  * @param {string} props.filter - Hozirgi filtr
  * @param {string} props.query - Hozirgi qidiruv so'zi
+ * @param {Object} [props.category] - Tanlangan kategoriya (bo'lsa)
  */
-const EmptyList = ({ filter = 'all', query = '' }) => {
-  const { emoji, title, subtitle } = getMessage(filter, query.trim());
+const EmptyList = ({ filter = 'all', query = '', category = null }) => {
+  const { emoji, title, subtitle } = getMessage(filter, query.trim(), category);
 
   return (
     <View style={styles.container}>
