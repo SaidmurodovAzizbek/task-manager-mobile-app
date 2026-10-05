@@ -29,6 +29,7 @@ export const SORT_OPTIONS = [
   { key: 'deadline', label: 'Muddat' },      // Eng yaqin muddat - tepada
   { key: 'priority', label: 'Muhimlik' },    // Yuqori ustuvorlik - tepada
   { key: 'title', label: 'Alifbo' },         // A-Z
+  { key: 'points', label: 'Ball' },          // Eng qimmatli task - tepada
 ];
 
 /** Ustuvorlik og'irliklari (saralash uchun) */
@@ -38,6 +39,19 @@ const PRIORITY_WEIGHT = { high: 3, medium: 2, low: 1 };
 export const TITLE_MIN = 3;
 export const TITLE_MAX = 100;
 export const DESCRIPTION_MAX = 500;
+
+/**
+ * Task balli (qiyinligi) uchun chegaralar.
+ *
+ * Ball - task qanchalik "og'ir" ekanini bildiradi. Bajarilganda
+ * shuncha ball yig'iladi (hisob-kitob - utils/pointsUtils.js da).
+ */
+export const POINTS_MIN = 1;
+export const POINTS_MAX = 999;
+export const DEFAULT_POINTS = 10;
+
+/** Ustuvorlikka qarab tavsiya qilinadigan ball (yangi taskda) */
+const SUGGESTED_POINTS = { high: 25, medium: 10, low: 5 };
 
 /**
  * Muddat uchun aqlli yil chegarasi.
@@ -242,6 +256,36 @@ export const maskDateInput = (text) => {
 };
 
 // ---------------------------------------------------------------------------
+// Ball
+// ---------------------------------------------------------------------------
+
+/**
+ * Ballni butun songa keltirish va chegaraga sig'dirish.
+ *
+ * Noto'g'ri qiymat (matn, manfiy son, bo'sh) kelsa - standart ball.
+ *
+ * @param {*} value
+ * @returns {number} - POINTS_MIN..POINTS_MAX oralig'idagi butun son
+ */
+export const normalizePoints = (value) => {
+  const number = typeof value === 'string' && value.trim() ? Number(value) : value;
+  if (typeof number !== 'number' || !Number.isFinite(number)) return DEFAULT_POINTS;
+
+  const rounded = Math.round(number);
+  if (rounded < POINTS_MIN) return DEFAULT_POINTS;
+
+  return Math.min(rounded, POINTS_MAX);
+};
+
+/**
+ * Ustuvorlikka mos tavsiya balli.
+ *
+ * @param {string} priority - 'high' | 'medium' | 'low'
+ * @returns {number}
+ */
+export const suggestPoints = (priority) => SUGGESTED_POINTS[priority] || DEFAULT_POINTS;
+
+// ---------------------------------------------------------------------------
 // Task obyekti
 // ---------------------------------------------------------------------------
 
@@ -256,7 +300,7 @@ export const generateId = () =>
 /**
  * Formadan kelgan ma'lumotdan to'liq task obyekti yasash.
  *
- * @param {Object} input - { title, description, deadline, priority, category }
+ * @param {Object} input - { title, description, deadline, priority, category, points }
  * @returns {Object} - Saqlashga tayyor task
  */
 export const createTask = (input = {}) => {
@@ -272,7 +316,9 @@ export const createTask = (input = {}) => {
       typeof input.category === 'string' && input.category.trim()
         ? input.category.trim()
         : DEFAULT_CATEGORY_KEY,
+    points: normalizePoints(input.points),
     completed: false,
+    completedAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -282,7 +328,7 @@ export const createTask = (input = {}) => {
  * Xotiradan o'qilgan taskni "tozalash".
  *
  * Eski versiyada saqlangan tasklarda ba'zi maydonlar yo'q bo'lishi mumkin
- * (masalan updatedAt yoki category). Bu funksiya ularni to'ldiradi va buzuq yozuvlarni
+ * (masalan updatedAt, category yoki points). Bu funksiya ularni to'ldiradi va buzuq yozuvlarni
  * rad etadi - shunda ilova eski ma'lumot ustida ham qulab tushmaydi.
  *
  * @param {Object} raw - Xotiradagi yozuv
@@ -298,6 +344,8 @@ export const normalizeTask = (raw) => {
 
   const createdAt =
     typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString();
+  const updatedAt = typeof raw.updatedAt === 'string' ? raw.updatedAt : createdAt;
+  const completed = raw.completed === true;
 
   return {
     id,
@@ -311,9 +359,18 @@ export const normalizeTask = (raw) => {
       typeof raw.category === 'string' && raw.category.trim()
         ? raw.category.trim()
         : DEFAULT_CATEGORY_KEY,
-    completed: raw.completed === true,
+    // Ballsiz (eski) tasklar standart ball oladi
+    points: normalizePoints(raw.points),
+    completed,
+    // Eski versiyada bajarilgan vaqt saqlanmagan - eng yaqin taxmin
+    // sifatida oxirgi tahrir vaqtini olamiz
+    completedAt: completed
+      ? typeof raw.completedAt === 'string'
+        ? raw.completedAt
+        : updatedAt
+      : null,
     createdAt,
-    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : createdAt,
+    updatedAt,
   };
 };
 
@@ -344,10 +401,10 @@ export const normalizeTasks = (rawList) => {
 /**
  * Forma ma'lumotlarini tekshirish.
  *
- * @param {Object} values - { title, deadline }
+ * @param {Object} values - { title, deadline, points }
  * @returns {Object} - Xatoliklar obyekti. Bo'sh bo'lsa - hammasi joyida.
  */
-export const validateTaskInput = ({ title = '', deadline = '' } = {}) => {
+export const validateTaskInput = ({ title = '', deadline = '', points } = {}) => {
   const errors = {};
   const cleanTitle = String(title).trim();
   const cleanDeadline = String(deadline ?? '').trim();
@@ -366,6 +423,16 @@ export const validateTaskInput = ({ title = '', deadline = '' } = {}) => {
     } else if (parsed.getFullYear() < MIN_YEAR || parsed.getFullYear() > MAX_YEAR) {
       // Terish xatosini ushlaymiz: "2555" yoki "0226" kabi yillar
       errors.deadline = `Yil ${MIN_YEAR}-${MAX_YEAR} oralig'ida bo'lishi kerak`;
+    }
+  }
+
+  // Ball berilgan bo'lsagina tekshiramiz (eski chaqiruvlar buzilmasin)
+  if (points !== undefined) {
+    const value = typeof points === 'string' ? points.trim() : points;
+    const number = value === '' || value === null ? NaN : Number(value);
+
+    if (!Number.isInteger(number) || number < POINTS_MIN || number > POINTS_MAX) {
+      errors.points = `Ball ${POINTS_MIN} dan ${POINTS_MAX} gacha butun son bo'lishi kerak`;
     }
   }
 
@@ -419,7 +486,7 @@ export const filterTasks = (
  * Bajarilgan tasklar tanlangan tartibdan qat'i nazar pastga tushadi.
  *
  * @param {Array} tasks - Tasklar
- * @param {string} sortKey - 'created' | 'deadline' | 'priority' | 'title'
+ * @param {string} sortKey - 'created' | 'deadline' | 'priority' | 'title' | 'points'
  * @returns {Array} - Saralangan yangi massiv
  */
 export const sortTasks = (tasks, sortKey = 'created') => {
@@ -448,6 +515,12 @@ export const sortTasks = (tasks, sortKey = 'created') => {
 
       case 'title': {
         const diff = a.title.localeCompare(b.title, 'uz');
+        if (diff !== 0) return diff;
+        break;
+      }
+
+      case 'points': {
+        const diff = (b.points || 0) - (a.points || 0);
         if (diff !== 0) return diff;
         break;
       }

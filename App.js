@@ -19,6 +19,7 @@ import HomeScreen from './screens/HomeScreen';
 import AddTaskScreen from './screens/AddTaskScreen';
 import EditTaskScreen from './screens/EditTaskScreen';
 import CategoriesScreen from './screens/CategoriesScreen';
+import ScoreScreen from './screens/ScoreScreen';
 import { colors } from './theme/colors';
 
 // Stack navigator - ekranlar "qatlam" bo'lib ustma-ust ochiladi
@@ -73,6 +74,13 @@ export default function App() {
             name="Categories"
             component={CategoriesScreen}
             options={{ title: 'Kategoriyalar', headerBackTitle: 'Orqaga' }}
+          />
+
+          {/* Ballar, daraja va yutuqlar */}
+          <Stack.Screen
+            name="Score"
+            component={ScoreScreen}
+            options={{ title: 'Natijalar', headerBackTitle: 'Orqaga' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

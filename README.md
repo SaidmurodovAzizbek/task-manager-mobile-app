@@ -15,11 +15,13 @@ ro'yxatdan o'tish kerak emas. Ilova samolyot rejimida ham to'liq ishlaydi.
 | ✅ | Task qo'shish, tahrirlash, o'chirish, bajarildi deb belgilash |
 | 🔍 | Sarlavha va tavsif bo'yicha qidirish |
 | 🎯 | Uch darajali ustuvorlik: Yuqori / O'rta / Past |
+| ⭐ | Har bir taskka ball (qiyinlik): 5 / 10 / 25 / 50 / 100 yoki istalgan son 1–999 |
+| 🏆 | Ballar, darajalar, kunlik seriya 🔥, 12 ta yutuq va "Natijalar" ekrani |
 | 🏷️ | Kategoriyalar: Ish, Oilaviy, Shaxsiy, Sport, Ta'lim, Boshqa + o'zingiz qo'shganlari |
 | 🗂️ | Bosh ekranda kategoriya bo'yicha filtr (har birida tasklar soni) |
 | 📅 | Muddat qo'yish + "Bugun / Ertaga / Bir hafta" tez tugmalari |
 | ⚠️ | Muddati o'tgan tasklar qizil rangda ajralib turadi |
-| ↕️ | Saralash: yangi, muddat, muhimlik yoki alifbo bo'yicha |
+| ↕️ | Saralash: yangi, muddat, muhimlik, alifbo yoki ball bo'yicha |
 | ↩️ | O'chirilgan taskni 6 soniya ichida qaytarish |
 | 📤 | Zaxira nusxa olish va undan tiklash |
 | 💾 | Tanlangan filtr va saralash tartibi eslab qolinadi |
@@ -128,9 +130,34 @@ kompyutersiz va internetsiz ishlaydi.
 > iPhone uchun `--platform ios` kerak, lekin u Apple Developer hisobini
 > (yiliga $99) talab qiladi. iPhone'da bepul yo'l - Expo Go'dan foydalanish.
 
+## Ballar va darajalar
+
+Har bir taskka **ball** beriladi — u taskning qanchalik "og'ir" ekanini
+bildiradi. Formada tez tugmalar bor (🌱 5 Oson, ⭐ 10 Oddiy, 🔥 25 Jiddiy,
+💎 50 Qiyin, 🏆 100 Epik), istalgan sonni (1–999) qo'lda yozish yoki −/+
+bilan o'zgartirish ham mumkin. Yangi taskda ball ustuvorlikka qarab o'zi
+tanlanadi (Yuqori → 25, O'rta → 10, Past → 5), toki o'zingiz boshqasini
+tanlamaguningizcha.
+
+| Qoida | |
+|---|---|
+| ✅ Task bajarildi | Uning balli hisobingizga qo'shiladi, ekranda "+25 ball" chiqadi |
+| ⚡ Muddatida bajarildi | +25% bonus (muddat kuni yoki undan oldin) |
+| ↩️ Qayta ochildi | Ball qaytib olinadi |
+| 🔥 Seriya | Har kuni kamida bitta task bajarsangiz o'sadi |
+| 🚀 Daraja | N-daraja uchun 25 × N × (N − 1) ball: 50, 150, 300, 500 ... |
+| 🗑️ O'chirish | Bajarilgan task o'chsa ham, balli saqlanib qoladi |
+
+Darajalar: 🌱 Boshlovchi → 🌿 Harakatchan → ⚡ G'ayratli → 🎯 Izchil →
+🚀 Uddaburon → 💪 Mohir → 🧠 Usta → 💎 Ekspert → 🏆 Chempion → 👑 Afsona.
+
+Bosh ekrandagi daraja panelini (yoki **⋯ → Natijalar va yutuqlar**) bossangiz
+**Natijalar** ekrani ochiladi: jami ball, bugun / 7 kunda, seriya, oxirgi
+7 kun grafigi, kategoriyalar bo'yicha ballar va 12 ta yutuq.
+
 ## 5. Testlar
 
-Sana hisobi, saralash, filtrlash va validatsiya mantiqi testlar bilan
+Sana hisobi, saralash, filtrlash, validatsiya va ballar mantiqi testlar bilan
 qoplangan. Telefon ham, emulyator ham kerak emas:
 
 ```bash
@@ -161,12 +188,16 @@ screens/
   AddTaskScreen.js        Yangi task qo'shish
   EditTaskScreen.js       Taskni tahrirlash
   CategoriesScreen.js     Kategoriyalarni qo'shish, tahrirlash, o'chirish
+  ScoreScreen.js          Natijalar: ballar, daraja, seriya, yutuqlar
 
 components/
   TaskForm.js             Qo'shish va tahrirlash uchun umumiy forma
   TaskItem.js             Bitta task kartochkasi
   DateField.js            Muddat kiritish maydoni
   PriorityPicker.js       Ustuvorlik tanlash
+  PointsPicker.js         Taskga ball berish
+  LevelBar.js             Bosh ekrandagi daraja paneli
+  RewardToast.js          Task bajarilganda "+31 ball" xabari
   CategoryPicker.js       Formada kategoriya tanlash (+ yangisini qo'shish)
   CategoryDialog.js       Kategoriya qo'shish / tahrirlash oynasi
   CategoryFilterBar.js    Bosh ekrandagi kategoriya filtri
@@ -183,6 +214,7 @@ hooks/
 utils/
   taskUtils.js            Sana, saralash, filtr va validatsiya mantiqi
   categoryUtils.js        Kategoriyalar mantiqi (standartlar, validatsiya)
+  pointsUtils.js          Ballar, bonus, daraja, seriya va yutuqlar
 
 theme/
   colors.js               Ranglar, ustuvorlik darajalari, kategoriya ranglari
@@ -190,6 +222,7 @@ theme/
 tests/
   taskUtils.test.js       Mantiq testlari
   categoryUtils.test.js   Kategoriyalar testlari
+  pointsUtils.test.js     Ballar testlari
 
 scripts/
   generate-icons.js       Ikonkalarni chizish
@@ -212,6 +245,8 @@ saqlashni `storage` ga, ko'rinishni komponentga.
 
 Tasklar `AsyncStorage` da, `@task_manager_tasks` kaliti ostida turadi,
 o'zingiz qo'shgan kategoriyalar esa `@task_manager_categories` da.
+O'chirilgan bajarilgan tasklardan qolgan ballar `@task_manager_score` da
+("bank") saqlanadi — shuning uchun tozalash natijalaringizni o'chirmaydi.
 Bu telefonning ichki xotirasi. Standart kategoriyalar saqlanmaydi - ular
 koddan keladi, shuning uchun ularni o'chirib bo'lmaydi.
 
@@ -222,7 +257,7 @@ Kategoriyalar paydo bo'lishidan oldingi eski tasklar ham "Boshqa" da turadi.
 uchun vaqti-vaqti bilan **⋯ → Zaxira nusxa olish** orqali nusxa olib,
 uni o'zingizga (masalan Telegram'dagi "Saqlangan xabarlar"ga) yuboring.
 Yangi telefonda **⋯ → Zaxiradan tiklash** orqali qaytarasiz.
-Zaxira nusxaga o'zingiz qo'shgan kategoriyalar ham kiradi; yangi
+Zaxira nusxaga o'zingiz qo'shgan kategoriyalar va ballar ham kiradi; yangi
 telefonda xuddi shu nomli kategoriya bo'lsa, ikkinchisi yaratilmaydi.
 
 ---

@@ -7,6 +7,7 @@
  * - kategoriya bo'yicha filtr (Ish, Sport, ...);
  * - taskni bajarildi deb belgilash, tahrirlash, o'chirish;
  * - o'chirilgan taskni qaytarish ("Qaytarish" tugmasi);
+ * - daraja paneli va task bajarilganda "+31 ball" xabari;
  * - zaxira nusxa va tozalash amallari (o'ng yuqoridagi "⋯" menyu).
  */
 
@@ -18,6 +19,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   RefreshControl,
   Alert,
@@ -32,6 +34,8 @@ import EmptyList from '../components/EmptyList';
 import TaskMenu from '../components/TaskMenu';
 import ImportDialog from '../components/ImportDialog';
 import CategoryFilterBar from '../components/CategoryFilterBar';
+import LevelBar from '../components/LevelBar';
+import RewardToast from '../components/RewardToast';
 import { useCategories } from '../hooks/useCategories';
 import { colors } from '../theme/colors';
 import {
@@ -40,6 +44,7 @@ import {
   deleteTask,
   exportTasks,
   getAllTasks,
+  getScoreBank,
   getSettings,
   importTasks,
   restoreTask,
@@ -54,6 +59,7 @@ import {
   TASK_FILTERS,
 } from '../utils/taskUtils';
 import { countByCategory, findCategory } from '../utils/categoryUtils';
+import { describeToggle, EMPTY_BANK, getScoreSummary } from '../utils/pointsUtils';
 
 // O'chirilgan taskni qaytarish uchun beriladigan vaqt (millisekund)
 const UNDO_TIMEOUT = 6000;
@@ -95,6 +101,13 @@ const HomeScreen = ({ navigation }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [importVisible, setImportVisible] = useState(false);
 
+  // Ballar banki (o'chirilgan bajarilgan tasklardan qolgan ballar)
+  const [bank, setBank] = useState(EMPTY_BANK);
+
+  // "+31 ball" xabari: describeToggle natijasi yoki null
+  const [toast, setToast] = useState(null);
+  const hideToast = useCallback(() => setToast(null), []);
+
   // O'chirilgan task: { task, index } - "Qaytarish" uchun saqlab turamiz
   const [undoItem, setUndoItem] = useState(null);
   const undoTimer = useRef(null);
@@ -112,13 +125,38 @@ const HomeScreen = ({ navigation }) => {
     tasksRef.current = tasks;
   }, [tasks]);
 
+  // Bank ham xuddi shu sababdan ref ichida
+  const bankRef = useRef(bank);
+  useEffect(() => {
+    bankRef.current = bank;
+  }, [bank]);
+
+  /**
+   * Ro'yxatni o'zgartiruvchi amal (o'chirish, qaytarish, tozalash) natijasini
+   * qo'llash. Bu amallar bankni ham o'zgartiradi, shuning uchun ikkalasi
+   * BIRGA yangilanadi - aks holda jami ball bir lahza "sakrab" ketadi.
+   *
+   * @param {Promise<Array>} pending - Storage funksiyasi qaytargan va'da
+   * @returns {Promise<Array>} - Yangi ro'yxat
+   */
+  const applyChange = useCallback(async (pending) => {
+    const list = await pending;
+    const saved = await getScoreBank();
+
+    setTasks(list);
+    setBank(saved);
+    return list;
+  }, []);
+
   /**
    * Tasklarni xotiradan o'qish.
    */
   const loadTasks = useCallback(async () => {
     try {
       setError(null);
-      setTasks(await getAllTasks());
+      const [list, saved] = await Promise.all([getAllTasks(), getScoreBank()]);
+      setTasks(list);
+      setBank(saved);
     } catch (err) {
       console.error('Yuklash xatoligi:', err);
       setError('Tasklarni yuklashda xatolik yuz berdi');
@@ -198,6 +236,7 @@ const HomeScreen = ({ navigation }) => {
   );
 
   const stats = useMemo(() => getStats(tasks), [tasks]);
+  const score = useMemo(() => getScoreSummary(tasks, bank), [tasks, bank]);
 
   /**
    * Har bir filtr yonida ko'rsatiladigan son.
@@ -225,10 +264,20 @@ const HomeScreen = ({ navigation }) => {
 
   /**
    * Bajarildi / bajarilmadi holatini almashtirish.
+   * Natijada qancha ball olingani (yoki qaytarilgani) xabar bo'lib chiqadi.
    */
   const handleToggle = useCallback(async (taskId) => {
     try {
-      setTasks(await toggleTaskComplete(taskId));
+      const before = getScoreSummary(tasksRef.current, bankRef.current);
+      const updated = await toggleTaskComplete(taskId);
+      setTasks(updated);
+
+      const task = updated.find((item) => item.id === taskId);
+      if (task) {
+        const after = getScoreSummary(updated, bankRef.current);
+        // Har safar yangi obyekt - xabar qaytadan "sakraydi"
+        setToast({ ...describeToggle(task, before, after), id: Date.now() });
+      }
     } catch (err) {
       console.error('Holatni o\'zgartirish xatoligi:', err);
       setError("Task holatini o'zgartirishda xatolik");
@@ -246,7 +295,7 @@ const HomeScreen = ({ navigation }) => {
     const index = tasksRef.current.findIndex((item) => item.id === task.id);
 
     try {
-      setTasks(await deleteTask(task.id));
+      await applyChange(deleteTask(task.id));
 
       setUndoItem({ task, index: index < 0 ? 0 : index });
 
@@ -257,7 +306,7 @@ const HomeScreen = ({ navigation }) => {
       console.error('O\'chirish xatoligi:', err);
       setError("Taskni o'chirishda xatolik");
     }
-  }, []);
+  }, [applyChange]);
 
   /**
    * O'chirilgan taskni joyiga qaytarish.
@@ -268,14 +317,14 @@ const HomeScreen = ({ navigation }) => {
     clearTimeout(undoTimer.current);
 
     try {
-      setTasks(await restoreTask(undoItem.task, undoItem.index));
+      await applyChange(restoreTask(undoItem.task, undoItem.index));
     } catch (err) {
       console.error('Qaytarish xatoligi:', err);
       setError('Taskni qaytarishda xatolik');
     } finally {
       setUndoItem(null);
     }
-  }, [undoItem]);
+  }, [undoItem, applyChange]);
 
   /**
    * Tahrirlash ekraniga o'tish.
@@ -335,6 +384,11 @@ const HomeScreen = ({ navigation }) => {
   const openCategories = () => navigation.navigate('Categories');
 
   /**
+   * Natijalar (ballar va yutuqlar) ekrani.
+   */
+  const openScore = () => navigation.navigate('Score');
+
+  /**
    * Menyuni yopib, so'ng amalni bajarish.
    *
    * @param {Function} action - Menyu yopilgach ishga tushadigan funksiya
@@ -372,8 +426,7 @@ const HomeScreen = ({ navigation }) => {
    * @param {string} text - Foydalanuvchi qo'ygan matn
    */
   const handleImport = async (text) => {
-    const restored = await importTasks(text);
-    setTasks(restored);
+    const restored = await applyChange(importTasks(text));
 
     // Oyna yopilgach xabar beramiz
     setTimeout(
@@ -393,7 +446,7 @@ const HomeScreen = ({ navigation }) => {
     runAfterMenuClose(() => {
       Alert.alert(
         'Bajarilganlarni tozalash',
-        `${stats.completed} ta bajarilgan task o'chiriladi. Davom etasizmi?`,
+        `${stats.completed} ta bajarilgan task o'chiriladi. Ballaringiz saqlanib qoladi. Davom etasizmi?`,
         [
           { text: 'Bekor qilish', style: 'cancel' },
           {
@@ -401,7 +454,7 @@ const HomeScreen = ({ navigation }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                setTasks(await clearCompletedTasks());
+                await applyChange(clearCompletedTasks());
               } catch (err) {
                 console.error('Tozalash xatoligi:', err);
                 setError('Tozalashda xatolik yuz berdi');
@@ -430,7 +483,7 @@ const HomeScreen = ({ navigation }) => {
             style: 'destructive',
             onPress: async () => {
               try {
-                setTasks(await clearAllTasks());
+                await applyChange(clearAllTasks());
                 setUndoItem(null);
               } catch (err) {
                 console.error('O\'chirish xatoligi:', err);
@@ -480,6 +533,9 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.menuButtonText}>⋯</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Daraja, jami ball va seriya - bosilsa "Natijalar" ochiladi */}
+        <LevelBar summary={score} onPress={openScore} />
 
         {/* Qidiruv maydoni */}
         <View style={styles.searchContainer}>
@@ -549,30 +605,37 @@ const HomeScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* ===== Saralash qatori ===== */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>Saralash:</Text>
+      {/* ===== Saralash qatori =====
+          Yonga suriladi: tor ekranda ham bitta qatorda qoladi */}
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortRow}
+        >
+          <Text style={styles.sortLabel}>Saralash:</Text>
 
-        {SORT_OPTIONS.map((option) => {
-          const active = sortKey === option.key;
+          {SORT_OPTIONS.map((option) => {
+            const active = sortKey === option.key;
 
-          return (
-            <TouchableOpacity
-              key={option.key}
-              style={[styles.sortChip, active && styles.sortChipActive]}
-              onPress={() => handleSortChange(option.key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`Saralash: ${option.label}`}
-            >
-              <Text
-                style={[styles.sortChipText, active && styles.sortChipTextActive]}
+            return (
+              <TouchableOpacity
+                key={option.key}
+                style={[styles.sortChip, active && styles.sortChipActive]}
+                onPress={() => handleSortChange(option.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`Saralash: ${option.label}`}
               >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text
+                  style={[styles.sortChipText, active && styles.sortChipTextActive]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Xatolik xabari (agar bo'lsa) */}
@@ -635,6 +698,9 @@ const HomeScreen = ({ navigation }) => {
         </View>
       )}
 
+      {/* ===== "+31 ball" xabari (FAB'dan yuqorida) ===== */}
+      <RewardToast toast={toast} bottom={insets.bottom + 100} onHide={hideToast} />
+
       {/* ===== Yangi task qo'shish tugmasi ===== */}
       <TouchableOpacity
         style={[styles.fab, { bottom: insets.bottom + 24 }]}
@@ -657,6 +723,8 @@ const HomeScreen = ({ navigation }) => {
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         stats={stats}
+        score={score}
+        onScore={() => runAfterMenuClose(openScore)}
         onExport={handleExport}
         onImport={handleOpenImport}
         onCategories={() => runAfterMenuClose(openCategories)}
@@ -803,7 +871,6 @@ const styles = StyleSheet.create({
   sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 6,
     paddingHorizontal: 16,
     paddingTop: 12,

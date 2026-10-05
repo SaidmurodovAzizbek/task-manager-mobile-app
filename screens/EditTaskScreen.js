@@ -11,31 +11,49 @@ import { View, Text, StyleSheet } from 'react-native';
 import TaskForm from '../components/TaskForm';
 import { colors } from '../theme/colors';
 import { updateTask } from '../storage/taskStorage';
+import { formatPoints, getTaskReward } from '../utils/pointsUtils';
 
 /**
  * Task holatini ko'rsatuvchi nishon (Faol / Bajarilgan).
+ * Bajarilgan taskda yonida qancha ball olingani ham turadi.
  * Forma sarlavhasi ostida turadi.
  *
  * @param {Object} props
- * @param {boolean} props.completed - Task bajarilganmi
+ * @param {Object} props.task - Tahrirlanayotgan task
  */
-const StatusBadge = ({ completed }) => (
-  <View
-    style={[
-      styles.statusBadge,
-      completed ? styles.statusCompleted : styles.statusActive,
-    ]}
-  >
-    <Text
-      style={[
-        styles.statusText,
-        completed ? styles.statusTextCompleted : styles.statusTextActive,
-      ]}
-    >
-      {completed ? '✅ Bajarilgan' : '🔄 Faol'}
-    </Text>
-  </View>
-);
+const StatusBadge = ({ task }) => {
+  const { completed } = task;
+  const reward = getTaskReward(task);
+
+  return (
+    <View style={styles.badgeRow}>
+      <View
+        style={[
+          styles.statusBadge,
+          completed ? styles.statusCompleted : styles.statusActive,
+        ]}
+      >
+        <Text
+          style={[
+            styles.statusText,
+            completed ? styles.statusTextCompleted : styles.statusTextActive,
+          ]}
+        >
+          {completed ? '✅ Bajarilgan' : '🔄 Faol'}
+        </Text>
+      </View>
+
+      {completed ? (
+        <View style={[styles.statusBadge, styles.rewardBadge]}>
+          <Text style={[styles.statusText, styles.rewardText]}>
+            🏅 +{formatPoints(reward.total)} ball
+            {reward.bonus > 0 ? ` (⚡ ${reward.bonus} bonus)` : ''}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
 
 /**
  * EditTaskScreen komponenti
@@ -54,13 +72,19 @@ const EditTaskScreen = ({ route, navigation }) => {
       title="✏️ Taskni tahrirlash"
       subtitle="O'zgartirmoqchi bo'lgan maydonlarni yangilang"
       submitLabel="💾 Yangilash"
-      headerExtra={<StatusBadge completed={task.completed} />}
+      headerExtra={<StatusBadge task={task} />}
       onSubmit={(values) => updateTask(task.id, values)}
     />
   );
 };
 
 const styles = StyleSheet.create({
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
   statusBadge: {
     alignSelf: 'flex-start', // Faqat matn kengligicha joy egallaydi
     paddingHorizontal: 12,
@@ -88,6 +112,14 @@ const styles = StyleSheet.create({
 
   statusTextCompleted: {
     color: colors.success,
+  },
+
+  rewardBadge: {
+    backgroundColor: colors.goldSurface,
+  },
+
+  rewardText: {
+    color: colors.goldDark,
   },
 });
 

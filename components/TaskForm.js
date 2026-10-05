@@ -28,11 +28,14 @@ import { useHeaderHeight } from '@react-navigation/elements';
 
 import CategoryPicker from './CategoryPicker';
 import DateField from './DateField';
+import PointsPicker from './PointsPicker';
 import PriorityPicker from './PriorityPicker';
 import { useCategories } from '../hooks/useCategories';
 import { colors } from '../theme/colors';
 import {
+  DEFAULT_POINTS,
   DESCRIPTION_MAX,
+  suggestPoints,
   TITLE_MAX,
   validateTaskInput,
 } from '../utils/taskUtils';
@@ -70,6 +73,14 @@ const TaskForm = ({
   const [deadline, setDeadline] = useState(task?.deadline || '');
   const [priority, setPriority] = useState(task?.priority || 'medium');
 
+  // Ball matn ko'rinishida saqlanadi: yozish paytida maydon bo'sh qolishi mumkin
+  const startPoints = String(task?.points ?? suggestPoints('medium'));
+  const [points, setPoints] = useState(startPoints);
+
+  // Yangi taskda ball ustuvorlikka "ergashadi" - toki foydalanuvchi
+  // o'zi ball tanlamaguncha. Tanlagach, uning tanloviga tegmaymiz.
+  const [pointsTouched, setPointsTouched] = useState(isEditing);
+
   // Boshlang'ich kategoriya: taskning o'zi yoki bosh ekranda tanlangan filtr
   const startCategory = task?.category || initialCategory || DEFAULT_CATEGORY_KEY;
   const [category, setCategory] = useState(startCategory);
@@ -96,6 +107,7 @@ const TaskForm = ({
     description.trim() !== (task?.description || '') ||
     deadline.trim() !== (task?.deadline || '') ||
     priority !== (task?.priority || 'medium') ||
+    points.trim() !== startPoints ||
     category !== startCategory;
 
   /**
@@ -143,12 +155,14 @@ const TaskForm = ({
       // Kalit o'zgarishsiz saqlanadi: kategoriya o'chirilgan bo'lsa ham
       // ro'yxat va filtr uni "Boshqa" deb ko'rsatadi
       category,
+      points: Number(points.trim()) || DEFAULT_POINTS,
     };
 
     // 1) Tekshiramiz
     const validationErrors = validateTaskInput({
       title: values.title,
       deadline: values.deadline,
+      points: points.trim(),
     });
 
     if (Object.keys(validationErrors).length > 0) {
@@ -284,7 +298,29 @@ const TaskForm = ({
         {/* === Ustuvorlik === */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>🎯 Ustuvorlik</Text>
-          <PriorityPicker value={priority} onChange={setPriority} />
+          <PriorityPicker
+            value={priority}
+            onChange={(key) => {
+              setPriority(key);
+              if (!pointsTouched) setPoints(String(suggestPoints(key)));
+            }}
+          />
+        </View>
+
+        {/* === Ball (qiyinlik) === */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>⭐ Ball</Text>
+          <PointsPicker
+            value={points}
+            onChange={(text) => {
+              setPoints(text);
+              setPointsTouched(true);
+              if (errors.points) setErrors((prev) => ({ ...prev, points: null }));
+            }}
+            error={errors.points}
+            hasDeadline={Boolean(deadline.trim())}
+            suggested={!pointsTouched && priority !== 'medium'}
+          />
         </View>
 
         {/* === Tugmalar === */}

@@ -35,6 +35,11 @@ export const colors = {
   warningSurface: '#FFF7E6',
   success: '#00875A',
   successSurface: '#E3FCEF',
+
+  // Ballar va yutuqlar ("oltin" rang)
+  gold: '#FFAB00',
+  goldDark: '#B65C02',     // Och fon ustidagi matn
+  goldSurface: '#FFFAE6',
 };
 
 /**

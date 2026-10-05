@@ -12,6 +12,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { createTask, normalizeTasks } from '../utils/taskUtils';
+import { bankTasks, mergeBanks, normalizeBank, unbankTask } from '../utils/pointsUtils';
 import {
   buildCategoryList,
   createCategory,
@@ -31,6 +32,10 @@ const SETTINGS_KEY = '@task_manager_settings';
 // Foydalanuvchi qo'shgan kategoriyalar saqlanadigan kalit.
 // Standart kategoriyalar bu yerda saqlanmaydi - ular koddan keladi.
 const CATEGORIES_KEY = '@task_manager_categories';
+
+// Ballar "banki": o'chirilgan bajarilgan tasklardan qolgan ballar.
+// Task o'chsa ham, uni bajarib topgan ballingiz yo'qolmasligi kerak.
+const SCORE_KEY = '@task_manager_score';
 
 /**
  * Tasklar massivini xotiraga yozish (ichki yordamchi funksiya).
@@ -106,13 +111,21 @@ export const updateTask = async (taskId, changes) => {
  */
 export const deleteTask = async (taskId) => {
   const tasks = await getAllTasks();
-  return persist(tasks.filter((task) => task.id !== taskId));
+  const removed = tasks.filter((task) => task.id === taskId);
+
+  const remaining = await persist(tasks.filter((task) => task.id !== taskId));
+
+  // Bajarilgan task o'chsa - balli bankda qoladi
+  await addToScoreBank(removed);
+  return remaining;
 };
 
 /**
  * O'chirilgan taskni joyiga qaytarish (UNDO).
  *
  * Foydalanuvchi tasodifan o'chirib yuborsa, "Qaytarish" tugmasi shuni chaqiradi.
+ * Task bajarilgan bo'lsa, o'chirishda bankka o'tgan balli qaytib olinadi -
+ * aks holda u ikki marta hisoblanib qolardi.
  *
  * @param {Object} task - Avval o'chirilgan task obyekti
  * @param {number} index - Ro'yxatdagi eski o'rni
@@ -125,24 +138,35 @@ export const restoreTask = async (task, index = 0) => {
   const position = Math.min(Math.max(index, 0), tasks.length);
   tasks.splice(position, 0, task);
 
-  return persist(tasks);
+  const restored = await persist(tasks);
+
+  if (task?.completed) {
+    await persistScoreBank(unbankTask(await getScoreBank(), task));
+  }
+
+  return restored;
 };
 
 /**
  * Task holatini almashtirish: bajarildi <-> bajarilmadi.
+ *
+ * Bajarilgan vaqt (completedAt) ham yoziladi: ball muddatida
+ * bajarilganmi-yo'qmi va seriya (🔥) shundan hisoblanadi.
  *
  * @param {string} taskId - Task ID'si
  * @returns {Promise<Array>} - Yangilangan ro'yxat
  */
 export const toggleTaskComplete = async (taskId) => {
   const tasks = await getAllTasks();
+  const now = new Date().toISOString();
 
   const updated = tasks.map((task) =>
     task.id === taskId
       ? {
           ...task,
           completed: !task.completed,
-          updatedAt: new Date().toISOString(),
+          completedAt: task.completed ? null : now,
+          updatedAt: now,
         }
       : task
   );
@@ -152,23 +176,32 @@ export const toggleTaskComplete = async (taskId) => {
 
 /**
  * Bajarilgan tasklarni tozalash.
+ * Ularning ballari yo'qolmaydi - bankka o'tadi.
  *
  * @returns {Promise<Array>} - Faqat faol tasklar qolgan ro'yxat
  */
 export const clearCompletedTasks = async () => {
   const tasks = await getAllTasks();
-  return persist(tasks.filter((task) => !task.completed));
+  const remaining = await persist(tasks.filter((task) => !task.completed));
+
+  // Ballar bankka o'tadi - natijalar va yutuqlar saqlanib qoladi
+  await addToScoreBank(tasks.filter((task) => task.completed));
+  return remaining;
 };
 
 /**
  * Barcha tasklarni o'chirish.
  *
  * Ehtiyot bo'ling - bu amalni qaytarib bo'lmaydi!
+ * Yig'ilgan ballar esa saqlanib qoladi (bankka o'tadi).
  *
  * @returns {Promise<Array>} - Bo'sh massiv
  */
 export const clearAllTasks = async () => {
+  const tasks = await getAllTasks();
   await AsyncStorage.removeItem(STORAGE_KEY);
+
+  await addToScoreBank(tasks);
   return [];
 };
 
@@ -183,14 +216,17 @@ export const clearAllTasks = async () => {
 export const exportTasks = async () => {
   const tasks = await getAllTasks();
   const categories = await getCustomCategories();
+  const score = await getScoreBank();
 
   return JSON.stringify(
     {
       app: 'task-manager-mobile-app',
       // 2-versiya: foydalanuvchi kategoriyalari ham qo'shildi
-      version: 2,
+      // 3-versiya: ballar banki (score) qo'shildi
+      version: 3,
       exportedAt: new Date().toISOString(),
       categories,
+      score,
       tasks,
     },
     null,
@@ -203,7 +239,7 @@ export const exportTasks = async () => {
  *
  * Mavjud tasklar o'chirilmaydi - yangilari ustiga qo'shiladi.
  * Bir xil ID li tasklar takrorlanmaydi (normalizeTasks buni hal qiladi).
- * Zaxiradagi kategoriyalar ham tiklanadi; bir xil nomlisi bo'lsa -
+ * Zaxiradagi kategoriyalar va ballar ham tiklanadi; bir xil nomlisi bo'lsa -
  * yangisi yaratilmaydi, tasklar mavjudiga o'tkaziladi.
  *
  * @param {string} json - exportTasks qaytargan matn
@@ -231,6 +267,12 @@ export const importTasks = async (json) => {
     incoming = incoming.map((task) =>
       remap[task.category] ? { ...task, category: remap[task.category] } : task
     );
+  }
+
+  // Ballar banki: har maydonning kattasi olinadi - bitta zaxirani
+  // ikki marta tiklasangiz ham ballar ikki baravar bo'lib ketmaydi
+  if (!Array.isArray(parsed) && parsed?.score) {
+    await persistScoreBank(mergeBanks(await getScoreBank(), parsed.score));
   }
 
   const current = await getAllTasks();
@@ -383,4 +425,45 @@ export const deleteCategory = async (key) => {
   const categories = await persistCategories(current.filter((c) => c.key !== key));
 
   return { categories, tasks: movedTasks };
+};
+
+// ---------------------------------------------------------------------------
+// Ballar banki
+// ---------------------------------------------------------------------------
+
+/**
+ * Ballar bankini o'qish.
+ *
+ * @returns {Promise<Object>} - Bank (xato bo'lsa - bo'sh bank)
+ */
+export const getScoreBank = async () => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(SCORE_KEY);
+    return normalizeBank(jsonValue != null ? JSON.parse(jsonValue) : null);
+  } catch (error) {
+    console.error('Ballarni olishda xatolik:', error);
+    return normalizeBank(null);
+  }
+};
+
+/**
+ * Bankni xotiraga yozish (ichki yordamchi).
+ *
+ * @param {Object} bank
+ * @returns {Promise<Object>}
+ */
+const persistScoreBank = async (bank) => {
+  const clean = normalizeBank(bank);
+  await AsyncStorage.setItem(SCORE_KEY, JSON.stringify(clean));
+  return clean;
+};
+
+/**
+ * O'chirilayotgan tasklar ichidagi bajarilganlarining ballini bankka qo'shish.
+ *
+ * @param {Array} tasks
+ */
+const addToScoreBank = async (tasks) => {
+  if (!tasks.some((task) => task.completed)) return;
+  await persistScoreBank(bankTasks(await getScoreBank(), tasks));
 };

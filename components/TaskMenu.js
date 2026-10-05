@@ -3,7 +3,8 @@
  *
  * Bosh ekranning o'ng yuqori burchagidagi "⋯" tugmasi shu oynani ochadi.
  * Ichida kundalik ishlatilmaydigan, lekin kerak bo'ladigan amallar:
- * kategoriyalarni boshqarish, zaxira nusxa olish, tiklash va tozalash.
+ * natijalar (ballar), kategoriyalarni boshqarish, zaxira nusxa olish,
+ * tiklash va tozalash.
  */
 
 import React from 'react';
@@ -18,6 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
+import { formatPoints } from '../utils/pointsUtils';
 
 /**
  * Menyudagi bitta qator.
@@ -57,6 +59,8 @@ const MenuRow = ({ icon, label, hint, onPress, disabled, danger }) => (
  * @param {boolean} props.visible - Oyna ochiqmi
  * @param {Function} props.onClose - Yopish
  * @param {Object} props.stats - { total, completed, active, overdue }
+ * @param {Object} props.score - getScoreSummary natijasi
+ * @param {Function} props.onScore - Natijalar ekranini ochish
  * @param {Function} props.onExport - Zaxira nusxa olish
  * @param {Function} props.onImport - Zaxiradan tiklash
  * @param {Function} props.onCategories - Kategoriyalar ekranini ochish
@@ -67,6 +71,8 @@ const TaskMenu = ({
   visible,
   onClose,
   stats,
+  score,
+  onScore,
   onExport,
   onImport,
   onCategories,
@@ -101,6 +107,13 @@ const TaskMenu = ({
           </Text>
 
           <View style={styles.divider} />
+
+          <MenuRow
+            icon="🏆"
+            label="Natijalar va yutuqlar"
+            hint={`${score.level.level}-daraja · ${formatPoints(score.total)} ball`}
+            onPress={onScore}
+          />
 
           <MenuRow
             icon="🏷️"

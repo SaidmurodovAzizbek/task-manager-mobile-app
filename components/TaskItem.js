@@ -5,6 +5,7 @@
  * - Checkbox (bajarilgan / bajarilmagan)
  * - Sarlavha va tavsif
  * - Ustuvorlik, kategoriya nishonlari va muddat
+ * - Ball: faol taskda "⭐ 25", bajarilganda olingan mukofot "🏅 +31"
  * - O'chirish tugmasi
  *
  * Kartochkaning o'zini bossangiz - tahrirlash ekrani ochiladi.
@@ -15,6 +16,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { colors, getCategoryColors, getPriority } from '../theme/colors';
 import { formatDate, formatDeadline, isOverdue } from '../utils/taskUtils';
+import { formatPoints, getTaskReward } from '../utils/pointsUtils';
 
 /**
  * TaskItem komponenti
@@ -34,6 +36,9 @@ const TaskItem = ({ task, category, onToggle, onDelete, onPress }) => {
   // Muddat o'tib ketganmi? Bajarilgan taskda buni ko'rsatmaymiz.
   const overdue = !task.completed && isOverdue(task.deadline);
 
+  // Bajarilgan bo'lsa - olingan mukofot, aks holda - taskning balli
+  const reward = getTaskReward(task);
+
   return (
     <TouchableOpacity
       style={[
@@ -47,7 +52,7 @@ const TaskItem = ({ task, category, onToggle, onDelete, onPress }) => {
       activeOpacity={0.7}
       // Ekran o'quvchi (TalkBack/VoiceOver) uchun izoh
       accessibilityRole="button"
-      accessibilityLabel={`${task.title}. ${priority.label} ustuvorlik. Kategoriya: ${category?.label}.`}
+      accessibilityLabel={`${task.title}. ${priority.label} ustuvorlik. Kategoriya: ${category?.label}. ${reward.base} ball.`}
       accessibilityHint="Tahrirlash uchun bosing"
     >
       {/* Yuqori qator: ustuvorlik + kategoriya nishonlari, o'ngda muddat */}
@@ -127,9 +132,21 @@ const TaskItem = ({ task, category, onToggle, onDelete, onPress }) => {
         </View>
       </View>
 
-      {/* Pastki qator: yaratilgan sana + o'chirish */}
+      {/* Pastki qator: ball + yaratilgan sana + o'chirish */}
       <View style={styles.cardFooter}>
-        <Text style={styles.createdDate}>{formatDate(task.createdAt)}</Text>
+        <View style={styles.footerInfo}>
+          <View style={[styles.pointsBadge, task.completed && styles.pointsBadgeEarned]}>
+            <Text style={styles.pointsText}>
+              {task.completed
+                ? `🏅 +${formatPoints(reward.total)}`
+                : `⭐ ${formatPoints(reward.base)}`}
+              {/* Muddatida bajarilgani uchun bonus */}
+              {reward.bonus > 0 ? ' ⚡' : ''}
+            </Text>
+          </View>
+
+          <Text style={styles.createdDate}>{formatDate(task.createdAt)}</Text>
+        </View>
 
         <TouchableOpacity
           style={styles.deleteButton}
@@ -324,6 +341,29 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.surfaceAlt,
+  },
+
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  pointsBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: colors.goldSurface,
+  },
+
+  pointsBadgeEarned: {
+    backgroundColor: '#FFF0B3',
+  },
+
+  pointsText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.goldDark,
   },
 
   createdDate: {
