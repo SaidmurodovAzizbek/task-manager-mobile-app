@@ -13,6 +13,7 @@ import {
   EMPTY_BANK,
   formatPoints,
   getAchievements,
+  getCompletionRecords,
   getLastDays,
   getLevel,
   getOnTimeBonus,
@@ -195,8 +196,27 @@ test('normalizeBank buzuq ma\'lumotni tozalaydi', () => {
       best: 30,
       days: { '2026-10-01': 20 },
       categories: { work: 50 },
+      history: [],
     }
   );
+});
+
+test('normalizeBank tarixni tozalaydi: yaroqsiz va takroriy yozuvlar tashlanadi', () => {
+  const bank = normalizeBank({
+    history: [
+      { id: 'b', day: '2026-10-03', points: 10, priority: 'high', category: 'sport' },
+      { id: 'a', day: '2026-10-01', points: 5, deadline: 'yomon', priority: '???' },
+      { id: 'b', day: '2026-10-04', points: 99 },
+      { id: 'c', day: 'yomon', points: 5 },
+      { id: 'd', day: '2026-10-02', points: 0 },
+      null,
+    ],
+  });
+
+  assert.deepEqual(bank.history, [
+    { id: 'a', day: '2026-10-01', deadline: null, priority: 'medium', category: 'other', points: 5 },
+    { id: 'b', day: '2026-10-03', deadline: null, priority: 'high', category: 'sport', points: 10 },
+  ]);
 });
 
 test('bankTasks faqat bajarilganlarni bankka o\'tkazadi, unbankTask qaytaradi', () => {
@@ -210,9 +230,20 @@ test('bankTasks faqat bajarilganlarni bankka o\'tkazadi, unbankTask qaytaradi', 
     best: 25,
     days: { '2026-10-05': 25 },
     categories: { work: 25 },
+    history: [
+      {
+        id: finished.id,
+        day: '2026-10-05',
+        deadline: '2026-10-06',
+        priority: 'medium',
+        category: 'work',
+        points: 25,
+      },
+    ],
   });
 
   const restored = unbankTask(banked, finished);
+  assert.deepEqual(restored.history, []);
   assert.equal(restored.points, 0);
   assert.equal(restored.tasks, 0);
   assert.deepEqual(restored.days, {});
@@ -225,6 +256,23 @@ test('mergeBanks bir zaxirani ikki marta tiklasa ham ikkilanmaydi', () => {
   const bank = bankTasks(EMPTY_BANK, [done('2026-10-05', { points: 30 })]);
   const merged = mergeBanks(mergeBanks(EMPTY_BANK, bank), bank);
   assert.deepEqual(merged, bank);
+});
+
+test("mergeBanks ikki xil tarixni ID bo'yicha birlashtiradi", () => {
+  const a = bankTasks(EMPTY_BANK, [done('2026-10-05', { id: 'x' })]);
+  const b = bankTasks(EMPTY_BANK, [done('2026-10-04', { id: 'y' }), done('2026-10-05', { id: 'x' })]);
+
+  assert.deepEqual(mergeBanks(a, b).history.map((r) => r.id), ['y', 'x']);
+});
+
+test('getCompletionRecords: hozirgi tasklar + bank tarixi, takrorsiz', () => {
+  const kept = done('2026-10-05', { id: 'kept', points: 10 });
+  const removed = done('2026-10-04', { id: 'gone', points: 20, priority: 'high' });
+  const bank = bankTasks(EMPTY_BANK, [removed, kept]);
+
+  const records = getCompletionRecords([kept, task({ id: 'open' })], bank);
+  assert.deepEqual(records.map((r) => r.id).sort(), ['gone', 'kept']);
+  assert.equal(records.find((r) => r.id === 'gone').priority, 'high');
 });
 
 // ---------------------------------------------------------------------------

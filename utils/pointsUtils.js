@@ -18,7 +18,12 @@
  *       best: 125,                         // eng katta bitta mukofot
  *       days: { '2026-10-05': 45, ... },   // kunlar bo'yicha (seriya va grafik uchun)
  *       categories: { work: 120, ... },    // kategoriyalar bo'yicha
+ *       history: [{ id, day, deadline, priority, category, points }, ...],
  *     }
+ *
+ * `history` - har bir o'chirilgan bajarilgan taskning qisqa yozuvi. Analitika
+ * (muddatida/kechikkan, muhimlik bo'yicha) task o'chirilgandan keyin ham
+ * to'g'ri chiqishi uchun kerak. Eski versiyalarda u yo'q edi.
  *
  * Umumiy natija = bank + hozir ro'yxatda turgan bajarilgan tasklar.
  *
@@ -85,7 +90,16 @@ export const EMPTY_BANK = Object.freeze({
   best: 0,
   days: Object.freeze({}),
   categories: Object.freeze({}),
+  history: Object.freeze([]),
 });
+
+/**
+ * Bankdagi tarix yozuvlari chegarasi. Kuniga 10 ta task bo'lsa ham
+ * bir yildan ko'proqqa yetadi; oshib ketsa - eng eskilari tashlanadi.
+ */
+export const HISTORY_LIMIT = 5000;
+
+const PRIORITY_KEYS = ['high', 'medium', 'low'];
 
 // ---------------------------------------------------------------------------
 // Yordamchilar
@@ -191,6 +205,77 @@ export const getTaskReward = (task) => {
 };
 
 // ---------------------------------------------------------------------------
+// Bajarilganlik yozuvi (analitika uchun)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bajarilgan taskning analitika uchun qisqa yozuvi.
+ *
+ * @param {Object} task
+ * @returns {Object|null} - { id, day, deadline, priority, category, points }
+ *   Bajarilmagan bo'lsa null. points - bonus bilan birga olingan ball.
+ */
+export const toCompletionRecord = (task) => {
+  const reward = getTaskReward(task);
+  if (reward.total === 0 || task?.id == null) return null;
+
+  return {
+    id: String(task.id),
+    day: getCompletionDay(task),
+    deadline: isValidDateString(task.deadline) ? task.deadline.trim() : null,
+    priority: PRIORITY_KEYS.includes(task.priority) ? task.priority : 'medium',
+    category: task.category || 'other',
+    points: reward.total,
+  };
+};
+
+/**
+ * Xotiradan o'qilgan tarix yozuvini tozalash.
+ *
+ * @param {*} raw
+ * @returns {Object|null}
+ */
+const normalizeRecord = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const id = raw.id != null ? String(raw.id) : '';
+  const points = count(raw.points);
+  if (!id || !points || !isValidDateString(raw.day)) return null;
+
+  return {
+    id,
+    day: raw.day.trim(),
+    deadline: isValidDateString(raw.deadline) ? raw.deadline.trim() : null,
+    priority: PRIORITY_KEYS.includes(raw.priority) ? raw.priority : 'medium',
+    category:
+      typeof raw.category === 'string' && raw.category.trim() ? raw.category.trim() : 'other',
+    points,
+  };
+};
+
+/**
+ * Tarixni tozalash: yaroqsizlari va takroriy ID'lar tashlanadi,
+ * eng eskilari HISTORY_LIMIT dan oshgan qismi kesiladi.
+ *
+ * @param {*} raw
+ * @returns {Array} - Kun bo'yicha tartiblangan yozuvlar
+ */
+const normalizeHistory = (raw) => {
+  if (!Array.isArray(raw)) return [];
+
+  const seen = new Set();
+  const list = raw.map(normalizeRecord).filter((record) => {
+    if (!record || seen.has(record.id)) return false;
+    seen.add(record.id);
+    return true;
+  });
+
+  // sort barqaror: bir kundagi yozuvlar o'z tartibida qoladi
+  list.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  return list.slice(-HISTORY_LIMIT);
+};
+
+// ---------------------------------------------------------------------------
 // Bank (o'chirilgan bajarilgan tasklar ballari)
 // ---------------------------------------------------------------------------
 
@@ -202,7 +287,7 @@ export const getTaskReward = (task) => {
  */
 export const normalizeBank = (raw) => {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ...EMPTY_BANK, days: {}, categories: {} };
+    return { ...EMPTY_BANK, days: {}, categories: {}, history: [] };
   }
 
   return {
@@ -212,6 +297,7 @@ export const normalizeBank = (raw) => {
     best: count(raw.best),
     days: normalizeCounts(raw.days, isValidDateString),
     categories: normalizeCounts(raw.categories),
+    history: normalizeHistory(raw.history),
   };
 };
 
@@ -239,8 +325,14 @@ export const bankTasks = (bank, tasks) => {
     next.best = Math.max(next.best, reward.total);
     next.days = addCounts(next.days, { [day]: reward.total });
     next.categories = addCounts(next.categories, { [category]: reward.total });
+
+    const record = toCompletionRecord(task);
+    if (record) {
+      next.history = [...next.history.filter((item) => item.id !== record.id), record];
+    }
   });
 
+  next.history = normalizeHistory(next.history);
   return next;
 };
 
@@ -266,6 +358,7 @@ export const unbankTask = (bank, task) => {
   next.onTime = Math.max(0, next.onTime - (reward.onTime ? 1 : 0));
   next.days = addCounts(next.days, { [day]: reward.total }, -1);
   next.categories = addCounts(next.categories, { [category]: reward.total }, -1);
+  next.history = next.history.filter((item) => item.id !== String(task.id));
 
   return next;
 };
@@ -299,7 +392,27 @@ export const mergeBanks = (current, incoming) => {
     best: Math.max(a.best, b.best),
     days: maxCounts(a.days, b.days),
     categories: maxCounts(a.categories, b.categories),
+    // Tarix - ID bo'yicha birlashma (bir task ikki marta tushmaydi)
+    history: normalizeHistory([...a.history, ...b.history]),
   };
+};
+
+/**
+ * Barcha bajarilganlik yozuvlari: hozirgi bajarilgan tasklar + bankdagi tarix.
+ *
+ * @param {Array} tasks
+ * @param {Object} bank
+ * @returns {Array} - toCompletionRecord ko'rinishidagi yozuvlar
+ */
+export const getCompletionRecords = (tasks, bank) => {
+  const records = (Array.isArray(tasks) ? tasks : []).map(toCompletionRecord).filter(Boolean);
+  const ids = new Set(records.map((record) => record.id));
+
+  normalizeBank(bank).history.forEach((record) => {
+    if (!ids.has(record.id)) records.push(record);
+  });
+
+  return records;
 };
 
 // ---------------------------------------------------------------------------

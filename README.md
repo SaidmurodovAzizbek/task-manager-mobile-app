@@ -17,6 +17,7 @@ ro'yxatdan o'tish kerak emas. Ilova samolyot rejimida ham to'liq ishlaydi.
 | 🎯 | Uch darajali ustuvorlik: Yuqori / O'rta / Past |
 | ⭐ | Har bir taskka ball (qiyinlik): 5 / 10 / 25 / 50 / 100 yoki istalgan son 1–999 |
 | 🏆 | Ballar, darajalar, kunlik seriya 🔥, 12 ta yutuq va "Natijalar" ekrani |
+| 📊 | Analitika: hafta / oy / 3 oy / 6 oy / yil bo'yicha muddatida-kechikkan, muhimlik, kategoriyalar, ballar |
 | 🏷️ | Kategoriyalar: Ish, Oilaviy, Shaxsiy, Sport, Ta'lim, Boshqa + o'zingiz qo'shganlari |
 | 🗂️ | Bosh ekranda kategoriya bo'yicha filtr (har birida tasklar soni) |
 | 📅 | Muddat qo'yish + "Bugun / Ertaga / Bir hafta" tez tugmalari |
@@ -155,9 +156,30 @@ Bosh ekrandagi daraja panelini (yoki **⋯ → Natijalar va yutuqlar**) bossangi
 **Natijalar** ekrani ochiladi: jami ball, bugun / 7 kunda, seriya, oxirgi
 7 kun grafigi, kategoriyalar bo'yicha ballar va 12 ta yutuq.
 
+### Analitika
+
+Bosh ekrandagi **📊** tugmasi (yoki **⋯ → Analitika**) tanlangan davr
+bo'yicha hisobot ochadi. Davrlar: **Hafta** (7 kun), **Oy** (30 kun),
+**3 oy**, **6 oy**, **Yil** (joriy oy bilan 12 oy).
+
+| Bo'lim | Nimani ko'rsatadi |
+|---|---|
+| Ko'rsatkichlar | Bajarildi, ball, muddatida %, faol kunlar — oldingi xuddi shunday davr bilan solishtirib (▲ / ▼) |
+| 💡 Xulosalar | Raqamlardan chiqqan qisqa maslahatlar: o'sish, qaysi muhimlik kechikyapti, eng samarali kun |
+| Dinamika | Ustunli grafik: tasklar (muddatida / kechikkan / muddatsiz) yoki ballar; ustunni bossangiz tafsiloti |
+| ⏰ Muddat bo'yicha | Taqsimot, o'rtacha kechikish va hozir muddati o'tgan faol tasklar |
+| 🎯 Muhimlik bo'yicha | Jadval: Yuqori / O'rta / Past — soni, ball, vaqtida %, kechikkanlar |
+| 🏷️ Kategoriyalar | Har birida nechta task va ballarning qancha ulushi |
+| 📅 Hafta kunlari | Qaysi kuni eng ko'p ish qilasiz |
+
+"Muddatida %" faqat muddati bor tasklar ichida hisoblanadi. Bajarilgan task
+o'chirilsa ham analitikadan yo'qolmaydi — uning qisqa yozuvi ballar bankida
+saqlanadi (bu imkoniyat 1.2 versiyada qo'shilgan; undan oldin o'chirilgan
+tasklarning faqat balli saqlangan).
+
 ## 5. Testlar
 
-Sana hisobi, saralash, filtrlash, validatsiya va ballar mantiqi testlar bilan
+Sana hisobi, saralash, filtrlash, validatsiya, ballar va analitika mantiqi testlar bilan
 qoplangan. Telefon ham, emulyator ham kerak emas:
 
 ```bash
@@ -189,6 +211,7 @@ screens/
   EditTaskScreen.js       Taskni tahrirlash
   CategoriesScreen.js     Kategoriyalarni qo'shish, tahrirlash, o'chirish
   ScoreScreen.js          Natijalar: ballar, daraja, seriya, yutuqlar
+  AnalyticsScreen.js      Analitika: davrlar bo'yicha hisobot
 
 components/
   TaskForm.js             Qo'shish va tahrirlash uchun umumiy forma
@@ -204,6 +227,7 @@ components/
   TaskMenu.js             Pastdan chiqadigan menyu
   ImportDialog.js         Zaxiradan tiklash oynasi
   EmptyList.js            Ro'yxat bo'sh bo'lgandagi xabar
+  BarChart.js             Ustunli (qatlamli) grafik - kutubxonasiz
 
 storage/
   taskStorage.js          Telefon xotirasi bilan ishlash (AsyncStorage)
@@ -215,6 +239,7 @@ utils/
   taskUtils.js            Sana, saralash, filtr va validatsiya mantiqi
   categoryUtils.js        Kategoriyalar mantiqi (standartlar, validatsiya)
   pointsUtils.js          Ballar, bonus, daraja, seriya va yutuqlar
+  analyticsUtils.js       Analitika: davrlar, taqsimotlar, xulosalar
 
 theme/
   colors.js               Ranglar, ustuvorlik darajalari, kategoriya ranglari
@@ -223,6 +248,7 @@ tests/
   taskUtils.test.js       Mantiq testlari
   categoryUtils.test.js   Kategoriyalar testlari
   pointsUtils.test.js     Ballar testlari
+  analyticsUtils.test.js  Analitika testlari
 
 scripts/
   generate-icons.js       Ikonkalarni chizish

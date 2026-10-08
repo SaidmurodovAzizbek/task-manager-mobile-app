@@ -61,6 +61,7 @@ const MenuRow = ({ icon, label, hint, onPress, disabled, danger }) => (
  * @param {Object} props.stats - { total, completed, active, overdue }
  * @param {Object} props.score - getScoreSummary natijasi
  * @param {Function} props.onScore - Natijalar ekranini ochish
+ * @param {Function} props.onAnalytics - Analitika ekranini ochish
  * @param {Function} props.onExport - Zaxira nusxa olish
  * @param {Function} props.onImport - Zaxiradan tiklash
  * @param {Function} props.onCategories - Kategoriyalar ekranini ochish
@@ -73,6 +74,7 @@ const TaskMenu = ({
   stats,
   score,
   onScore,
+  onAnalytics,
   onExport,
   onImport,
   onCategories,
@@ -113,6 +115,13 @@ const TaskMenu = ({
             label="Natijalar va yutuqlar"
             hint={`${score.level.level}-daraja · ${formatPoints(score.total)} ball`}
             onPress={onScore}
+          />
+
+          <MenuRow
+            icon="📊"
+            label="Analitika"
+            hint="Hafta, oy, yil bo'yicha: muddatida, muhimlik, ballar"
+            onPress={onAnalytics}
           />
 
           <MenuRow

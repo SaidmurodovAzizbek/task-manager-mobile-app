@@ -68,7 +68,7 @@ export const MIN_YEAR = 2000;
 export const MAX_YEAR = 2100;
 
 // O'zbekcha qisqartirilgan oy nomlari
-const MONTHS = [
+export const MONTHS = [
   'yan', 'fev', 'mar', 'apr', 'may', 'iyn',
   'iyl', 'avg', 'sen', 'okt', 'noy', 'dek',
 ];

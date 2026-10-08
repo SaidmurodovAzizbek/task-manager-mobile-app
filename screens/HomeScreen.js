@@ -8,6 +8,7 @@
  * - taskni bajarildi deb belgilash, tahrirlash, o'chirish;
  * - o'chirilgan taskni qaytarish ("Qaytarish" tugmasi);
  * - daraja paneli va task bajarilganda "+31 ball" xabari;
+ * - analitika tugmasi (📊);
  * - zaxira nusxa va tozalash amallari (o'ng yuqoridagi "⋯" menyu).
  */
 
@@ -389,6 +390,11 @@ const HomeScreen = ({ navigation }) => {
   const openScore = () => navigation.navigate('Score');
 
   /**
+   * Analitika ekrani.
+   */
+  const openAnalytics = () => navigation.navigate('Analytics');
+
+  /**
    * Menyuni yopib, so'ng amalni bajarish.
    *
    * @param {Function} action - Menyu yopilgach ishga tushadigan funksiya
@@ -522,6 +528,16 @@ const HomeScreen = ({ navigation }) => {
               {stats.overdue > 0 ? ` · ${stats.overdue} kechikkan` : ''}
             </Text>
           </View>
+
+          <TouchableOpacity
+            style={[styles.menuButton, styles.headerButtonGap]}
+            onPress={openAnalytics}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel="Analitika"
+          >
+            <Text style={styles.analyticsButtonText}>📊</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuButton}
@@ -725,6 +741,7 @@ const HomeScreen = ({ navigation }) => {
         stats={stats}
         score={score}
         onScore={() => runAfterMenuClose(openScore)}
+        onAnalytics={() => runAfterMenuClose(openAnalytics)}
         onExport={handleExport}
         onImport={handleOpenImport}
         onCategories={() => runAfterMenuClose(openCategories)}
@@ -798,6 +815,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  headerButtonGap: {
+    marginRight: 8,
+  },
+
+  analyticsButtonText: {
+    fontSize: 18,
   },
 
   menuButtonText: {

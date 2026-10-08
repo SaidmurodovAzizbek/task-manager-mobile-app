@@ -20,6 +20,7 @@ import AddTaskScreen from './screens/AddTaskScreen';
 import EditTaskScreen from './screens/EditTaskScreen';
 import CategoriesScreen from './screens/CategoriesScreen';
 import ScoreScreen from './screens/ScoreScreen';
+import AnalyticsScreen from './screens/AnalyticsScreen';
 import { colors } from './theme/colors';
 
 // Stack navigator - ekranlar "qatlam" bo'lib ustma-ust ochiladi
@@ -81,6 +82,13 @@ export default function App() {
             name="Score"
             component={ScoreScreen}
             options={{ title: 'Natijalar', headerBackTitle: 'Orqaga' }}
+          />
+
+          {/* Analitika: davrlar bo'yicha statistika */}
+          <Stack.Screen
+            name="Analytics"
+            component={AnalyticsScreen}
+            options={{ title: 'Analitika', headerBackTitle: 'Orqaga' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

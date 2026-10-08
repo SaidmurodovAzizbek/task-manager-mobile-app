@@ -40,6 +40,12 @@ export const colors = {
   gold: '#FFAB00',
   goldDark: '#B65C02',     // Och fon ustidagi matn
   goldSurface: '#FFFAE6',
+
+  // Analitika grafiklari. Yashil/qizil juftligi rang ko'rlikda ham
+  // ajraladigan qilib tanlangan (to'q #00875A bilan qizil qo'shilib ketadi).
+  chartOnTime: '#36B37E',
+  chartLate: '#FF5630',
+  chartNone: '#C1C7D0',    // Muddatsiz - neytral kulrang
 };
 
 /**
