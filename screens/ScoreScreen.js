@@ -1,12 +1,11 @@
 /**
- * ScoreScreen.js - Natijalar: ballar, daraja, seriya va yutuqlar
+ * ScoreScreen.js - Natijalar: ballar, daraja va seriya
  *
  * Ekranda:
  * - daraja kartochkasi (jami ball, keyingi darajagacha qancha qolgani);
  * - qisqa ko'rsatkichlar: bugun, 7 kunda, seriya, kutilayotgan ballar;
  * - oxirgi 7 kun grafigi (ustunni bossangiz - o'sha kun ko'rinadi);
  * - kategoriyalar bo'yicha ballar;
- * - yutuqlar (nishonlar);
  * - "Qanday ishlaydi?" - qoidalar.
  */
 
@@ -29,7 +28,6 @@ import { findCategory } from '../utils/categoryUtils';
 import { formatDate } from '../utils/taskUtils';
 import {
   formatPoints,
-  getAchievements,
   getLevel,
   getScoreSummary,
   ON_TIME_BONUS_RATE,
@@ -113,7 +111,6 @@ const ScoreScreen = () => {
     () => getScoreSummary(tasks, bank, { categories }),
     [tasks, bank, categories]
   );
-  const achievements = useMemo(() => getAchievements(summary), [summary]);
 
   // Bank hali o'qilmagan - bir lahza kutamiz
   if (!bank) {
@@ -126,7 +123,6 @@ const ScoreScreen = () => {
 
   const { level } = summary;
   const nextLevel = getLevel(level.next);
-  const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   // Grafik
   const maxDay = Math.max(...summary.lastWeek.map((d) => d.points), 1);
@@ -277,47 +273,6 @@ const ScoreScreen = () => {
           })}
         </View>
       ) : null}
-
-      {/* ===== Yutuqlar ===== */}
-      <View style={styles.card}>
-        <SectionTitle right={`${unlockedCount}/${achievements.length}`}>🏅 Yutuqlar</SectionTitle>
-
-        <View style={styles.badges}>
-          {achievements.map((achievement) => (
-            <View
-              key={achievement.key}
-              style={[styles.badge, achievement.unlocked && styles.badgeUnlocked]}
-              accessible
-              accessibilityLabel={`${achievement.title}. ${achievement.description}. ${
-                achievement.unlocked
-                  ? 'Ochilgan'
-                  : `${achievement.current} / ${achievement.target}`
-              }`}
-            >
-              <Text style={[styles.badgeIcon, !achievement.unlocked && styles.badgeIconLocked]}>
-                {achievement.icon}
-              </Text>
-              <Text style={styles.badgeTitle} numberOfLines={1}>
-                {achievement.title}
-              </Text>
-              <Text style={styles.badgeDescription} numberOfLines={2}>
-                {achievement.description}
-              </Text>
-
-              {achievement.unlocked ? (
-                <Text style={styles.badgeDone}>✓ Ochildi</Text>
-              ) : (
-                <View style={styles.badgeProgress}>
-                  <Progress value={achievement.progress} color={colors.gold} />
-                  <Text style={styles.badgeCount}>
-                    {formatPoints(achievement.current)}/{formatPoints(achievement.target)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      </View>
 
       {/* ===== Qoidalar ===== */}
       <View style={styles.card}>
@@ -597,71 +552,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     marginLeft: 8,
-  },
-
-  // ===== Yutuqlar =====
-  badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-
-  badge: {
-    width: '47.5%',
-    flexGrow: 1,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.surfaceAlt,
-    backgroundColor: colors.background,
-    padding: 12,
-    alignItems: 'center',
-  },
-
-  badgeUnlocked: {
-    borderColor: colors.gold,
-    backgroundColor: colors.goldSurface,
-  },
-
-  badgeIcon: {
-    fontSize: 30,
-    marginBottom: 6,
-  },
-
-  badgeIconLocked: {
-    opacity: 0.3,
-  },
-
-  badgeTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.text,
-  },
-
-  badgeDescription: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
-    minHeight: 28,
-  },
-
-  badgeDone: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.goldDark,
-    marginTop: 8,
-  },
-
-  badgeProgress: {
-    alignSelf: 'stretch',
-    marginTop: 8,
-  },
-
-  badgeCount: {
-    fontSize: 10,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: 4,
   },
 
   // ===== Qoidalar =====

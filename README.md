@@ -16,7 +16,7 @@ ro'yxatdan o'tish kerak emas. Ilova samolyot rejimida ham to'liq ishlaydi.
 | 🔍 | Sarlavha va tavsif bo'yicha qidirish |
 | 🎯 | Uch darajali ustuvorlik: Yuqori / O'rta / Past |
 | ⭐ | Har bir taskka ball (qiyinlik): 5 / 10 / 25 / 50 / 100 yoki istalgan son 1–999 |
-| 🏆 | Ballar, darajalar, kunlik seriya 🔥, 12 ta yutuq va "Natijalar" ekrani |
+| 🏆 | Ballar, darajalar, kunlik seriya 🔥 va "Natijalar" ekrani |
 | 📊 | Analitika: hafta / oy / 3 oy / 6 oy / yil bo'yicha muddatida-kechikkan, muhimlik, kategoriyalar, ballar |
 | 🏷️ | Kategoriyalar: Ish, Oilaviy, Shaxsiy, Sport, Ta'lim, Boshqa + o'zingiz qo'shganlari |
 | 🗂️ | Bosh ekranda kategoriya bo'yicha filtr (har birida tasklar soni) |
@@ -152,9 +152,9 @@ tanlamaguningizcha.
 Darajalar: 🌱 Boshlovchi → 🌿 Harakatchan → ⚡ G'ayratli → 🎯 Izchil →
 🚀 Uddaburon → 💪 Mohir → 🧠 Usta → 💎 Ekspert → 🏆 Chempion → 👑 Afsona.
 
-Bosh ekrandagi daraja panelini (yoki **⋯ → Natijalar va yutuqlar**) bossangiz
+Bosh ekrandagi daraja panelini (yoki **⋯ → Natijalar**) bossangiz
 **Natijalar** ekrani ochiladi: jami ball, bugun / 7 kunda, seriya, oxirgi
-7 kun grafigi, kategoriyalar bo'yicha ballar va 12 ta yutuq.
+7 kun grafigi va kategoriyalar bo'yicha ballar.
 
 ### Analitika
 
@@ -210,7 +210,7 @@ screens/
   AddTaskScreen.js        Yangi task qo'shish
   EditTaskScreen.js       Taskni tahrirlash
   CategoriesScreen.js     Kategoriyalarni qo'shish, tahrirlash, o'chirish
-  ScoreScreen.js          Natijalar: ballar, daraja, seriya, yutuqlar
+  ScoreScreen.js          Natijalar: ballar, daraja, seriya
   AnalyticsScreen.js      Analitika: davrlar bo'yicha hisobot
 
 components/
@@ -238,7 +238,7 @@ hooks/
 utils/
   taskUtils.js            Sana, saralash, filtr va validatsiya mantiqi
   categoryUtils.js        Kategoriyalar mantiqi (standartlar, validatsiya)
-  pointsUtils.js          Ballar, bonus, daraja, seriya va yutuqlar
+  pointsUtils.js          Ballar, bonus, daraja va seriya
   analyticsUtils.js       Analitika: davrlar, taqsimotlar, xulosalar
 
 theme/

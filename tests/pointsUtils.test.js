@@ -1,5 +1,5 @@
 /**
- * pointsUtils.test.js - Ballar, darajalar va yutuqlar testlari
+ * pointsUtils.test.js - Ballar, darajalar va seriya testlari
  *
  *     npm test
  */
@@ -12,7 +12,6 @@ import {
   describeToggle,
   EMPTY_BANK,
   formatPoints,
-  getAchievements,
   getCompletionRecords,
   getLastDays,
   getLevel,
@@ -335,7 +334,7 @@ test('getLastDays oxirgi 7 kunni hafta kunlari bilan qaytaradi', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Umumiy natija va yutuqlar
+// Umumiy natija
 // ---------------------------------------------------------------------------
 
 test('getScoreSummary bank va hozirgi tasklarni qo\'shib hisoblaydi', () => {
@@ -372,24 +371,6 @@ test('getScoreSummary o\'chirilgan kategoriya ballini "Boshqa"ga yig\'adi', () =
     { categories, now: NOW }
   );
   assert.deepEqual(summary.byCategory, { other: 20 });
-});
-
-test('getAchievements ochilgan va qolgan yutuqlarni ko\'rsatadi', () => {
-  const summary = getScoreSummary(
-    [done('2026-10-06', { points: 120 })],
-    EMPTY_BANK,
-    { now: NOW }
-  );
-  const byKey = Object.fromEntries(getAchievements(summary).map((a) => [a.key, a]));
-
-  assert.equal(byKey.first.unlocked, true);
-  assert.equal(byKey.hundred.unlocked, true);
-  assert.equal(byKey.epic.unlocked, true);
-  assert.equal(byKey['ten-tasks'].unlocked, false);
-  assert.equal(byKey['ten-tasks'].current, 1);
-  assert.equal(byKey['ten-tasks'].progress, 0.1);
-  // Joriy qiymat maqsaddan oshmaydi
-  assert.equal(byKey.hundred.current, 100);
 });
 
 test('describeToggle: ball, bonus, yangi daraja va seriya', () => {

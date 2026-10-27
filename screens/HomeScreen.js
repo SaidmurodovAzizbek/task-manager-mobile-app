@@ -385,7 +385,7 @@ const HomeScreen = ({ navigation }) => {
   const openCategories = () => navigation.navigate('Categories');
 
   /**
-   * Natijalar (ballar va yutuqlar) ekrani.
+   * Natijalar (ballar, daraja va seriya) ekrani.
    */
   const openScore = () => navigation.navigate('Score');
 

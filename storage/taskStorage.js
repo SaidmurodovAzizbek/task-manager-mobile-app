@@ -184,7 +184,7 @@ export const clearCompletedTasks = async () => {
   const tasks = await getAllTasks();
   const remaining = await persist(tasks.filter((task) => !task.completed));
 
-  // Ballar bankka o'tadi - natijalar va yutuqlar saqlanib qoladi
+  // Ballar bankka o'tadi - natijalar saqlanib qoladi
   await addToScoreBank(tasks.filter((task) => task.completed));
   return remaining;
 };

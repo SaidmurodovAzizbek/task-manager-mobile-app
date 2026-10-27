@@ -77,7 +77,7 @@ export default function App() {
             options={{ title: 'Kategoriyalar', headerBackTitle: 'Orqaga' }}
           />
 
-          {/* Ballar, daraja va yutuqlar */}
+          {/* Ballar, daraja va seriya */}
           <Stack.Screen
             name="Score"
             component={ScoreScreen}

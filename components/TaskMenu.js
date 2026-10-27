@@ -112,7 +112,7 @@ const TaskMenu = ({
 
           <MenuRow
             icon="🏆"
-            label="Natijalar va yutuqlar"
+            label="Natijalar"
             hint={`${score.level.level}-daraja · ${formatPoints(score.total)} ball`}
             onPress={onScore}
           />

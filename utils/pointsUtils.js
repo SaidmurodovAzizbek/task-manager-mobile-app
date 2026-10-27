@@ -1,5 +1,5 @@
 /**
- * pointsUtils.js - Ballar, darajalar va yutuqlar mantig'i
+ * pointsUtils.js - Ballar, darajalar va seriya mantig'i
  *
  * Qoidalar oddiy:
  * - har bir taskning o'z balli bor (qiyinligi: 5, 10, 25 ...);
@@ -559,7 +559,6 @@ export const getScoreSummary = (tasks, bank, { categories, now = new Date() } = 
   let total = saved.points;
   let completedCount = saved.tasks;
   let onTimeCount = saved.onTime;
-  let bestReward = saved.best;
   let potential = 0;
   let byCategory = { ...saved.categories };
 
@@ -574,7 +573,6 @@ export const getScoreSummary = (tasks, bank, { categories, now = new Date() } = 
     total += reward.total;
     completedCount += 1;
     onTimeCount += reward.onTime ? 1 : 0;
-    bestReward = Math.max(bestReward, reward.total);
     byCategory = addCounts(byCategory, { [task.category || 'other']: reward.total });
   });
 
@@ -600,7 +598,6 @@ export const getScoreSummary = (tasks, bank, { categories, now = new Date() } = 
     lastWeek,
     completedCount,
     onTimeCount,
-    bestReward,
     bestDay,
     potential,
     activeCount: list.filter((task) => !task.completed).length,
@@ -611,130 +608,6 @@ export const getScoreSummary = (tasks, bank, { categories, now = new Date() } = 
     byCategory,
   };
 };
-
-// ---------------------------------------------------------------------------
-// Yutuqlar (nishonlar)
-// ---------------------------------------------------------------------------
-
-/**
- * Yutuqlar ro'yxati. `value` - summary'dan joriy ko'rsatkichni oladi.
- */
-export const ACHIEVEMENTS = [
-  {
-    key: 'first',
-    icon: '🌱',
-    title: 'Birinchi qadam',
-    description: 'Birinchi taskni bajaring',
-    target: 1,
-    value: (s) => s.completedCount,
-  },
-  {
-    key: 'hundred',
-    icon: '💯',
-    title: 'Yuzlik',
-    description: '100 ball yig\'ing',
-    target: 100,
-    value: (s) => s.total,
-  },
-  {
-    key: 'ten-tasks',
-    icon: '🎯',
-    title: "O'ntalik",
-    description: '10 ta taskni bajaring',
-    target: 10,
-    value: (s) => s.completedCount,
-  },
-  {
-    key: 'punctual',
-    icon: '⏰',
-    title: 'Aniq vaqtida',
-    description: '10 ta taskni muddatida bajaring',
-    target: 10,
-    value: (s) => s.onTimeCount,
-  },
-  {
-    key: 'streak-3',
-    icon: '🔥',
-    title: 'Uchqun',
-    description: '3 kun ketma-ket task bajaring',
-    target: 3,
-    value: (s) => s.bestStreak,
-  },
-  {
-    key: 'day-100',
-    icon: '⚡',
-    title: 'Zarbdor kun',
-    description: 'Bir kunda 100 ball oling',
-    target: 100,
-    value: (s) => s.bestDay,
-  },
-  {
-    key: 'epic',
-    icon: '🏆',
-    title: "Epik g'alaba",
-    description: '100+ balli taskni bajaring',
-    target: 100,
-    value: (s) => s.bestReward,
-  },
-  {
-    key: 'streak-7',
-    icon: '☄️',
-    title: 'Olovli hafta',
-    description: '7 kun ketma-ket task bajaring',
-    target: 7,
-    value: (s) => s.bestStreak,
-  },
-  {
-    key: 'thousand',
-    icon: '💎',
-    title: 'Ming ball',
-    description: '1 000 ball yig\'ing',
-    target: 1000,
-    value: (s) => s.total,
-  },
-  {
-    key: 'hundred-tasks',
-    icon: '🦾',
-    title: 'Temir iroda',
-    description: '100 ta taskni bajaring',
-    target: 100,
-    value: (s) => s.completedCount,
-  },
-  {
-    key: 'streak-30',
-    icon: '🌋',
-    title: "So'nmas olov",
-    description: '30 kun ketma-ket task bajaring',
-    target: 30,
-    value: (s) => s.bestStreak,
-  },
-  {
-    key: 'legend',
-    icon: '👑',
-    title: 'Afsona',
-    description: '10-darajaga chiqing',
-    target: levelThreshold(10),
-    value: (s) => s.total,
-  },
-];
-
-/**
- * Yutuqlar holati: qaysilari ochilgan, qolganlarida qancha qolgan.
- *
- * @param {Object} summary - getScoreSummary natijasi
- * @returns {Array} - [{ key, icon, title, description, target, current, unlocked, progress }]
- */
-export const getAchievements = (summary) =>
-  ACHIEVEMENTS.map(({ value, ...achievement }) => {
-    const current = Math.min(count(value(summary)), achievement.target);
-
-    return {
-      ...achievement,
-      current,
-      unlocked: current >= achievement.target,
-      progress: current / achievement.target,
-    };
-  });
 
 // ---------------------------------------------------------------------------
 // Task belgilanganda nima bo'ldi?
